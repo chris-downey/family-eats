@@ -273,19 +273,6 @@
   }
   .dad-joke-punchline { color: var(--red); font-size: 19px; }
 
-  /* SUGGESTION CARD */
-  .suggest-card {
-    background: linear-gradient(135deg, var(--green), var(--green-light));
-    border-radius: var(--radius); padding: 20px; color: white; margin-bottom: 14px;
-    position: relative; overflow: hidden;
-  }
-  .suggest-card::before {
-    content: '✨'; position: absolute; right: 16px; top: 16px; font-size: 32px; opacity: 0.6;
-  }
-  .suggest-label { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; opacity: 0.8; margin-bottom: 4px; }
-  .suggest-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; margin-bottom: 8px; }
-  .suggest-desc { font-size: 13px; opacity: 0.9; line-height: 1.5; }
-
   /* SECTION TITLE */
   .section-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; margin: 18px 0 10px; color: var(--mid); text-transform: uppercase; letter-spacing: 0.5px; }
 
@@ -404,7 +391,6 @@
     </div>
   </div>
   <div id="vote-banner-wrap"></div>
-  <div id="suggest-wrap"></div>
   <div class="week-grid" id="week-grid"></div>
 </div>
 
@@ -530,6 +516,7 @@
 <div class="modal-overlay" id="recipe-detail-modal">
   <div class="modal">
     <div class="modal-handle"></div>
+    <button onclick="closeModal('recipe-detail-modal')" style="position:absolute;top:16px;right:16px;background:var(--light);border:none;border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--mid);">✕</button>
     <div id="recipe-detail-content"></div>
   </div>
 </div>
@@ -707,16 +694,6 @@ const DAD_JOKES = [
   { setup: "Why did the math book look so sad?", punchline: "Because it had too many problems! 📐" },
 ];
 
-// ─── WEEKLY SUGGESTED RECIPES ────────────────────────────────────────────────
-const WEEKLY_SUGGESTIONS = [
-  { name: "Ottolenghi's Roasted Aubergine with Tahini", track: "plant", desc: "Char-roasted aubergine, pomegranate molasses, crispy chickpeas, and a lemon-tahini sauce. A showstopper that the whole family will love." },
-  { name: "Slow-Cooked Korean Pulled Beef Tacos", track: "meat", desc: "Tender beef short ribs in gochujang & soy, served in warm tortillas with quick-pickled cucumber and sesame slaw." },
-  { name: "Miso Butter Mushroom Ramen", track: "plant", desc: "Rich miso broth with shiitake, king oyster mushrooms, toasted sesame, soft-boiled egg and silky noodles." },
-  { name: "Lamb Kofta with Herbed Yoghurt", track: "meat", desc: "Spiced lamb kofta skewers with a mint & dill yoghurt dip, warm flatbreads and a fresh tomato salad." },
-  { name: "Butternut Squash & Lentil Dhal", track: "plant", desc: "A warming coconut dhal with roasted butternut squash, tempered cumin, mustard seeds and fresh coriander." },
-  { name: "One-Pan Harissa Chicken Thighs", track: "meat", desc: "Sticky harissa-glazed chicken thighs with roasted peppers, olives and preserved lemon. 40 mins start to finish." },
-  { name: "Smashed Crispy Potatoes with Vegan Aioli", track: "shared", desc: "Boil, smash, roast to golden perfection. Served with a garlicky vegan aioli — a crowd-pleaser for every track!" },
-];
 
 // ─── PAGE NAVIGATION ─────────────────────────────────────────────────────────
 function showPage(name, btn) {
@@ -770,17 +747,6 @@ function renderPlan() {
     </div>`;
   } else { voteWrap.innerHTML = ''; }
 
-  // Weekly suggestion
-  const week = getWeekNumber();
-  const sug = WEEKLY_SUGGESTIONS[week % WEEKLY_SUGGESTIONS.length];
-  document.getElementById('suggest-wrap').innerHTML = `
-    <div class="suggest-card">
-      <div class="suggest-label">🌟 This Week's Discovery</div>
-      <div class="suggest-title">${sug.name}</div>
-      <div class="suggest-desc">${sug.desc}</div>
-      <span class="badge" style="background:rgba(255,255,255,0.2);color:white;margin-top:10px;display:inline-block;">${sug.track === 'plant' ? '🥦 Plant Based' : sug.track === 'meat' ? '🍖 Meat' : '🤝 Shared'}</span>
-    </div>`;
-
   // Week grid
   const grid = document.getElementById('week-grid');
   grid.innerHTML = DAYS.map(d => {
@@ -823,11 +789,6 @@ function renderPlan() {
   }).join('');
 }
 
-function getWeekNumber() {
-  const d = new Date();
-  const onejan = new Date(d.getFullYear(), 0, 1);
-  return Math.ceil((((d - onejan) / 86400000) + onejan.getDay() + 1) / 7);
-}
 
 // ─── WEEK SETUP ───────────────────────────────────────────────────────────────
 function openWeekSetup() {
@@ -1354,6 +1315,7 @@ function openRecipeDetail(id) {
     <div style="font-size:16px;margin-bottom:12px;">${stars}</div>
     ${reviews ? `<div class="section-title">Reviews</div><div>${reviews}</div>` : ''}
     <button class="btn btn-danger btn-sm" style="margin-top:16px;" onclick="deleteRecipe('${rec.id}')">🗑️ Delete Recipe</button>
+    <button class="btn btn-outline btn-full" style="margin-top:10px;" onclick="closeModal('recipe-detail-modal')">✕ Close</button>
   `;
   openModal('recipe-detail-modal');
 }
@@ -1881,32 +1843,6 @@ function checkFridayNotification() {
 }
 </script>
 
-
-    <div class="pin-title" id="pin-title">Parent Access</div>
-    <div class="pin-subtitle" id="pin-subtitle">Enter your 4-digit PIN to manage recipes</div>
-    <div class="pin-dots" id="pin-dots">
-      <div class="pin-dot" id="pd0"></div>
-      <div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div>
-      <div class="pin-dot" id="pd3"></div>
-    </div>
-    <div class="pin-grid">
-      <button class="pin-key" onclick="pinPress('1')">1</button>
-      <button class="pin-key" onclick="pinPress('2')">2</button>
-      <button class="pin-key" onclick="pinPress('3')">3</button>
-      <button class="pin-key" onclick="pinPress('4')">4</button>
-      <button class="pin-key" onclick="pinPress('5')">5</button>
-      <button class="pin-key" onclick="pinPress('6')">6</button>
-      <button class="pin-key" onclick="pinPress('7')">7</button>
-      <button class="pin-key" onclick="pinPress('8')">8</button>
-      <button class="pin-key" onclick="pinPress('9')">9</button>
-      <button class="pin-key wide" onclick="pinPress('0')">0</button>
-      <button class="pin-key del" onclick="pinDelete()">⌫</button>
-    </div>
-    <div class="pin-error" id="pin-error"></div>
-    <span class="pin-cancel" id="pin-cancel" onclick="closePinPad()">Cancel</span>
-  </div>
-</div>
 
 <!-- PWA SERVICE WORKER REGISTRATION -->
 <script>
