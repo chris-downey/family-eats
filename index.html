@@ -612,14 +612,22 @@ async function cloudRead() {
   } catch(e) { return null; }
 }
 
+function isUrlPhoto(photo) {
+  // True if it's an external URL (imgur etc), not a base64 blob
+  return photo && (photo.startsWith('http://') || photo.startsWith('https://'));
+}
+
 async function cloudWrite(data) {
   const { binId, apiKey } = getCloudCfg();
   if (!binId || !apiKey) return false;
   try {
-    // Strip photos from cloud — too large; photos stay local only
     const cloudData = {
       ...data,
-      recipes: data.recipes.map(r => ({ ...r, photo: r.photo ? '__has_photo__' : null })),
+      // Keep imgur URLs, strip base64 blobs (too large for JSONBin)
+      recipes: data.recipes.map(r => ({
+        ...r,
+        photo: isUrlPhoto(r.photo) ? r.photo : (r.photo ? '__has_photo__' : null)
+      })),
       dadJokePhoto: null
     };
     const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
@@ -654,7 +662,10 @@ async function syncFromCloud() {
 
   appData.recipes     = (remote.recipes || []).map(r => ({
     ...r,
-    photo: r.photo === '__has_photo__' ? (localPhotos[r.id] || null) : r.photo
+    // If it's an imgur URL, use it directly. If it's the placeholder, fall back to local.
+    photo: isUrlPhoto(r.photo) ? r.photo
+         : r.photo === '__has_photo__' ? (localPhotos[r.id] || null)
+         : r.photo
   }));
   appData.weekPlan    = remote.weekPlan    || appData.weekPlan;
   appData.votes       = remote.votes       || appData.votes;
@@ -981,17 +992,54 @@ function openAddRecipe(editId) {
   openModal('recipe-modal');
 }
 
-function handlePhotoUpload(e) {
+async function handlePhotoUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
+
+  // Show local preview immediately so it feels fast
   const reader = new FileReader();
-  reader.onload = ev => {
-    document.getElementById('rec-photo-data').value = ev.target.result;
+  reader.onload = async ev => {
+    const localDataUrl = ev.target.result;
+    document.getElementById('rec-photo-data').value = localDataUrl;
     document.getElementById('photo-preview-wrap').innerHTML = `
       <div class="img-preview-wrap">
-        <img src="${ev.target.result}" class="img-preview">
+        <img src="${localDataUrl}" class="img-preview">
         <button class="img-remove" onclick="clearPhoto(event)">✕</button>
+        <div id="photo-upload-status" style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.6);color:white;font-size:11px;padding:3px 8px;border-radius:10px;">⬆️ Uploading…</div>
       </div>`;
+
+    // Upload to imgur (anonymous, no account needed)
+    try {
+      const base64 = localDataUrl.split(',')[1];
+      const formData = new FormData();
+      formData.append('image', base64);
+      formData.append('type', 'base64');
+
+      const res = await fetch('https://api.imgur.com/3/image', {
+        method: 'POST',
+        headers: { 'Authorization': 'Client-ID 546c25a59c58ad7' },
+        body: formData
+      });
+      const data = await res.json();
+
+      if (data.success && data.data?.link) {
+        const imgurUrl = data.data.link;
+        // Store the imgur URL instead of the base64
+        document.getElementById('rec-photo-data').value = imgurUrl;
+        const statusEl = document.getElementById('photo-upload-status');
+        if (statusEl) statusEl.innerHTML = '☁️ Saved — everyone will see this photo';
+        setTimeout(() => statusEl?.remove(), 3000);
+      } else {
+        // Imgur failed — keep local base64 as fallback
+        const statusEl = document.getElementById('photo-upload-status');
+        if (statusEl) statusEl.innerHTML = '📱 Saved locally only';
+        setTimeout(() => statusEl?.remove(), 3000);
+      }
+    } catch(err) {
+      const statusEl = document.getElementById('photo-upload-status');
+      if (statusEl) statusEl.innerHTML = '📱 Saved locally only';
+      setTimeout(() => statusEl?.remove(), 3000);
+    }
   };
   reader.readAsDataURL(file);
 }
@@ -1735,7 +1783,7 @@ async function testAndSaveCloud() {
   } else {
     // Merge any existing cloud data
     if ((data.recipes||[]).length > 0) {
-      const incoming = (data.recipes||[]).map(r => ({...r, photo: r.photo === '__has_photo__' ? null : r.photo}));
+      const incoming = (data.recipes||[]).map(r => ({...r, photo: isUrlPhoto(r.photo) ? r.photo : (r.photo === '__has_photo__' ? null : r.photo)}));
       mergeImportedRecipes(incoming);
     }
     result.innerHTML = '<span style="color:var(--green);">✅ Connected & synced!</span>';
