@@ -397,7 +397,11 @@
 <div id="page-plan" class="page active">
   <div class="page-header">
     <h1 class="page-title">🍽️ This Week</h1>
-    <button class="btn btn-primary btn-sm" onclick="openWeekSetup()">✏️ Edit</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span id="sync-status-dot" title="Not configured" style="width:10px;height:10px;border-radius:50%;background:#ccc;display:inline-block;flex-shrink:0;cursor:pointer;" onclick="showSecretSettings()"></span>
+      <button class="btn btn-outline btn-sm" onclick="showSecretSettings()">⚙️</button>
+      <button class="btn btn-primary btn-sm" onclick="openWeekSetup()">✏️ Edit</button>
+    </div>
   </div>
   <div id="vote-banner-wrap"></div>
   <div id="suggest-wrap"></div>
@@ -409,6 +413,7 @@
     <h1 class="page-title">📖 Recipes</h1>
     <button class="btn btn-primary btn-sm" onclick="openAddRecipe()">+ Add</button>
   </div>
+
   <div class="tabs">
     <button class="tab-btn active" onclick="switchRecipeTab('plant', this)">🥦 Plant Based</button>
     <button class="tab-btn" onclick="switchRecipeTab('meat', this)">🍖 Meat</button>
@@ -566,26 +571,108 @@
 
 <script>
 // ─── DATA STORE ───────────────────────────────────────────────────────────────
-const DB_KEY = 'familyEatsData_v2';
+const DB_KEY        = 'familyEatsData_v3';
+const CLOUD_CFG_KEY = 'familyEats_cloudCfg';   // stores { binId, apiKey }
 
+// ── Local cache ──────────────────────────────────────────────────────────────
 function loadData() {
   try {
     const raw = localStorage.getItem(DB_KEY);
     if (raw) return JSON.parse(raw);
   } catch(e) {}
-  return {
-    recipes: [],
-    weekPlan: {},
-    votes: {},
-    votesSubmitted: [],
-    shoppingList: [],
-    reviews: [],
-    dadJokePhoto: null
-  };
+  return { recipes:[], weekPlan:{}, votes:{}, votesSubmitted:[], shoppingList:[], reviews:[], dadJokePhoto:null };
+}
+function saveLocal() {
+  localStorage.setItem(DB_KEY, JSON.stringify(appData));
 }
 
-function saveData() {
-  localStorage.setItem(DB_KEY, JSON.stringify(appData));
+// ── Cloud config ─────────────────────────────────────────────────────────────
+function getCloudCfg() {
+  try { return JSON.parse(localStorage.getItem(CLOUD_CFG_KEY)) || {}; } catch(e) { return {}; }
+}
+function saveCloudCfg(cfg) {
+  localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify(cfg));
+}
+function isCloudConfigured() {
+  const c = getCloudCfg();
+  return !!(c.binId && c.apiKey);
+}
+
+// ── JSONBin API helpers ───────────────────────────────────────────────────────
+async function cloudRead() {
+  const { binId, apiKey } = getCloudCfg();
+  if (!binId || !apiKey) return null;
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+      headers: { 'X-Master-Key': apiKey }
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.record || null;
+  } catch(e) { return null; }
+}
+
+async function cloudWrite(data) {
+  const { binId, apiKey } = getCloudCfg();
+  if (!binId || !apiKey) return false;
+  try {
+    // Strip photos from cloud — too large; photos stay local only
+    const cloudData = {
+      ...data,
+      recipes: data.recipes.map(r => ({ ...r, photo: r.photo ? '__has_photo__' : null })),
+      dadJokePhoto: null
+    };
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey },
+      body: JSON.stringify(cloudData)
+    });
+    return res.ok;
+  } catch(e) { return false; }
+}
+
+// ── Main save — always saves locally, pushes to cloud if configured ───────────
+async function saveData(pushCloud = true) {
+  saveLocal();
+  if (pushCloud && isCloudConfigured()) {
+    showSyncStatus('syncing');
+    const ok = await cloudWrite(appData);
+    showSyncStatus(ok ? 'ok' : 'error');
+  }
+}
+
+// ── Pull from cloud on load — merges into local ───────────────────────────────
+async function syncFromCloud() {
+  if (!isCloudConfigured()) return;
+  showSyncStatus('syncing');
+  const remote = await cloudRead();
+  if (!remote) { showSyncStatus('error'); return; }
+
+  // Merge recipes: cloud wins for recipe list, preserve local photos
+  const localPhotos = {};
+  appData.recipes.forEach(r => { if (r.photo) localPhotos[r.id] = r.photo; });
+
+  appData.recipes     = (remote.recipes || []).map(r => ({
+    ...r,
+    photo: r.photo === '__has_photo__' ? (localPhotos[r.id] || null) : r.photo
+  }));
+  appData.weekPlan    = remote.weekPlan    || appData.weekPlan;
+  appData.votes       = remote.votes       || appData.votes;
+  appData.votesSubmitted = remote.votesSubmitted || appData.votesSubmitted;
+  appData.reviews     = remote.reviews     || appData.reviews;
+  // Keep local shoppingList checked-state and dadJokePhoto
+  saveLocal();
+  showSyncStatus('ok');
+  renderPlan(); renderRecipes(); renderVote(); renderShop(); renderReview();
+}
+
+// ── Sync status indicator ─────────────────────────────────────────────────────
+function showSyncStatus(state) {
+  const el = document.getElementById('sync-status-dot');
+  if (!el) return;
+  el.title = state === 'syncing' ? 'Syncing…' : state === 'ok' ? 'Synced ✅' : 'Sync error ⚠️';
+  el.style.background = state === 'syncing' ? '#f4a261' : state === 'ok' ? '#52b788' : '#c1121f';
+  if (state === 'ok') setTimeout(() => { el.style.background = '#ccc'; }, 3000);
 }
 
 let appData = loadData();
@@ -842,12 +929,12 @@ function renderShop() {
 
 function toggleShopItem(id) {
   const item = appData.shoppingList.find(i => String(i.id) === String(id));
-  if (item) { item.checked = !item.checked; saveData(); renderShop(); }
+  if (item) { item.checked = !item.checked; saveData(false); renderShop(); }
 }
 
 function clearChecked() {
   appData.shoppingList = (appData.shoppingList || []).filter(i => !i.checked);
-  saveData(); renderShop(); showToast('Cleared checked items ✅');
+  saveData(false); renderShop(); showToast('Cleared checked items ✅');
 }
 
 // ─── RECIPES ──────────────────────────────────────────────────────────────────
@@ -1508,41 +1595,221 @@ document.addEventListener('DOMContentLoaded', () => {
   renderRecipes();
   renderVote();
   checkFridayNotification();
+  syncFromCloud();
 });
 
 function showSecretSettings() {
-  showToast('🔧 Secret settings activated!');
   const modal = document.createElement('div');
   modal.className = 'modal-overlay open';
+  modal.id = 'settings-modal-dynamic';
+  const recipeCount = appData.recipes.length;
+  const hasKey = !!getApiKey();
+  const cfg = getCloudCfg();
+  const cloudOk = isCloudConfigured();
   modal.innerHTML = `<div class="modal">
     <div class="modal-handle"></div>
     <h2 class="modal-title">⚙️ Settings</h2>
+
+    <!-- CLOUD SYNC -->
+    <div style="background:${cloudOk ? 'var(--green-pale)' : 'var(--amber-pale)'};border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:${cloudOk ? 'var(--green)' : 'var(--amber)'};margin-bottom:6px;">
+        ${cloudOk ? '☁️ Cloud Sync — Active ✅' : '☁️ Cloud Sync — Not Set Up'}
+      </div>
+      ${cloudOk ? `
+      <div style="font-size:12px;color:var(--mid);margin-bottom:10px;line-height:1.5;">
+        All family members auto-sync recipes, votes and reviews. Data is safe between app updates.
+      </div>
+      <button class="btn btn-primary btn-full btn-sm" onclick="syncFromCloud();document.getElementById('settings-modal-dynamic').remove()">🔄 Sync Now</button>
+      <button class="btn btn-outline btn-full btn-sm" style="margin-top:8px;" onclick="showCloudSetup(true)">🔧 Change Settings</button>
+      ` : `
+      <div style="font-size:12px;color:var(--mid);margin-bottom:10px;line-height:1.5;">
+        Takes 2 minutes to set up. After that, all recipes, votes and reviews are automatically shared across every family member's phone — no codes, no manual steps.
+      </div>
+      <button class="btn btn-secondary btn-full btn-sm" onclick="showCloudSetup(false)">☁️ Set Up Cloud Sync →</button>
+      `}
+    </div>
+
+    <!-- BACKUP -->
+    <div style="background:var(--light);border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:var(--mid);margin-bottom:6px;">💾 Manual Backup — ${recipeCount} recipe${recipeCount!==1?'s':''}</div>
+      <div style="font-size:12px;color:var(--mid);margin-bottom:10px;line-height:1.5;">
+        Keep a local backup file as extra insurance before updating the app.
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline btn-full btn-sm" onclick="exportRecipes()">📤 Export</button>
+        <button class="btn btn-outline btn-full btn-sm" onclick="document.getElementById('import-file-input').click()">📥 Import</button>
+        <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importRecipesFromFile(event)">
+      </div>
+    </div>
+
+    <!-- API KEY -->
     <div class="form-group">
-      <label class="form-label">🔑 AI Scan API Key</label>
-      <div style="font-size:12px;color:var(--mid);margin-bottom:8px;">Required for the ingredient photo scanner. Get yours free at console.anthropic.com</div>
+      <label class="form-label">🔑 AI Scan API Key ${hasKey ? '<span style="color:var(--green);">✅</span>' : '<span style="color:#aaa;">(not set)</span>'}</label>
+      <div style="font-size:12px;color:var(--mid);margin-bottom:8px;">Required for ingredient photo scanning. Free at console.anthropic.com</div>
       <input class="form-input" id="settings-api-key" type="password" placeholder="sk-ant-api03-..." value="${getApiKey()}" autocomplete="off">
       <button class="btn btn-primary btn-sm" style="margin-top:8px;width:100%;" onclick="saveApiKey(document.getElementById('settings-api-key').value);showToast('API key saved! ✅');">Save API Key</button>
     </div>
+
+    <!-- DAD PHOTO -->
     <div class="form-group">
-      <label class="form-label">Dad's Photo (for joke screen 😄)</label>
+      <label class="form-label">😄 Dad's Joke Photo</label>
       <div class="upload-area" onclick="document.getElementById('dad-photo-input').click()">
         <input type="file" id="dad-photo-input" accept="image/*" onchange="uploadDadPhoto(this)">
         <div class="upload-icon">👨</div>
         <div class="upload-text">${appData.dadJokePhoto ? '✅ Photo set! Tap to change' : 'Tap to upload Dad\'s photo'}</div>
       </div>
     </div>
+
     <div class="form-group">
       <label class="form-label">Preview Dad Joke</label>
       <button class="btn btn-secondary btn-full" onclick="showDadJoke()">Test Dad Joke 🎉</button>
     </div>
+
     <div class="form-group">
-      <label class="form-label">Reset All Votes</label>
-      <button class="btn btn-danger btn-full" onclick="if(confirm('Reset all votes?')){appData.votes={};appData.votesSubmitted=[];saveData();showToast('Votes reset!');}">Reset Votes</button>
+      <label class="form-label">Danger Zone</label>
+      <button class="btn btn-danger btn-full btn-sm" onclick="if(confirm('Reset all votes?')){appData.votes={};appData.votesSubmitted=[];saveData();showToast('Votes reset!');}">Reset All Votes</button>
     </div>
+
     <button class="btn btn-outline btn-full mt-16" onclick="this.closest('.modal-overlay').remove()">Close</button>
   </div>`;
   document.body.appendChild(modal);
 }
+
+// ─── CLOUD SETUP MODAL ────────────────────────────────────────────────────────
+function showCloudSetup(isEdit) {
+  document.getElementById('cloud-setup-modal')?.remove();
+  const cfg = getCloudCfg();
+  const modal = document.createElement('div');
+  modal.id = 'cloud-setup-modal';
+  modal.className = 'modal-overlay open';
+  modal.innerHTML = `<div class="modal">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title">☁️ Cloud Sync Setup</h2>
+
+    <div style="background:var(--green-pale);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.8;">
+      <strong>One-time setup (2 mins):</strong><br>
+      1. Go to <strong>jsonbin.io</strong> and create a free account<br>
+      2. Click <strong>CREATE BIN</strong>, paste in <code style="background:#fff;padding:1px 5px;border-radius:4px;">{}</code> and save<br>
+      3. Copy the <strong>BIN ID</strong> from the URL (looks like <code style="background:#fff;padding:1px 5px;border-radius:4px;">64abc123...</code>)<br>
+      4. Go to <strong>API Keys</strong> in your account → copy your <strong>Master Key</strong><br>
+      5. Paste both below — do this once on one device, then copy the same details to all family phones
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">JSONBin Bin ID</label>
+      <input class="form-input" id="cloud-bin-id" placeholder="64abc123def456..." value="${cfg.binId || ''}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">JSONBin Master Key</label>
+      <input class="form-input" id="cloud-api-key" type="password" placeholder="$2a$10$..." value="${cfg.apiKey || ''}">
+    </div>
+    <div id="cloud-test-result" style="min-height:20px;margin-bottom:10px;font-size:13px;"></div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="btn btn-primary btn-full" onclick="testAndSaveCloud()">✅ Save & Test Connection</button>
+      ${isEdit ? '<button class="btn btn-danger btn-full btn-sm" onclick="if(confirm(\'Remove cloud sync?\'){saveCloudCfg({});showToast(\'Cloud sync removed\');document.getElementById(\'cloud-setup-modal\').remove();document.getElementById(\'settings-modal-dynamic\')?.remove();}">Remove Cloud Sync</button>' : ''}
+      <button class="btn btn-outline btn-full" onclick="document.getElementById('cloud-setup-modal').remove()">Cancel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+async function testAndSaveCloud() {
+  const binId  = document.getElementById('cloud-bin-id')?.value.trim();
+  const apiKey = document.getElementById('cloud-api-key')?.value.trim();
+  const result = document.getElementById('cloud-test-result');
+  if (!binId || !apiKey) { result.innerHTML = '<span style="color:var(--red);">Please fill in both fields</span>'; return; }
+  result.innerHTML = '<span style="color:var(--amber);">🔄 Testing connection…</span>';
+  saveCloudCfg({ binId, apiKey });
+
+  // Try reading from the bin
+  const data = await cloudRead();
+  if (data === null) {
+    // Bin might be empty — try writing first
+    const writeOk = await cloudWrite(appData);
+    if (!writeOk) {
+      result.innerHTML = '<span style="color:var(--red);">⚠️ Could not connect. Check your Bin ID and Master Key.</span>';
+      saveCloudCfg({});
+      return;
+    }
+    result.innerHTML = '<span style="color:var(--green);">✅ Connected! Your recipes are now in the cloud.</span>';
+  } else {
+    // Merge any existing cloud data
+    if ((data.recipes||[]).length > 0) {
+      const incoming = (data.recipes||[]).map(r => ({...r, photo: r.photo === '__has_photo__' ? null : r.photo}));
+      mergeImportedRecipes(incoming);
+    }
+    result.innerHTML = '<span style="color:var(--green);">✅ Connected & synced!</span>';
+  }
+  showSyncStatus('ok');
+  setTimeout(() => {
+    document.getElementById('cloud-setup-modal')?.remove();
+    document.getElementById('settings-modal-dynamic')?.remove();
+    showToast('☁️ Cloud sync is live — all devices will auto-sync!');
+  }, 1500);
+}
+
+// ─── EXPORT ───────────────────────────────────────────────────────────────────
+function exportRecipes() {
+  const exportData = {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    exportedFrom: 'FamilyEats',
+    recipes: appData.recipes,
+    votes: appData.votes
+  };
+  const json = JSON.stringify(exportData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `familyeats-recipes-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast(`✅ Exported ${appData.recipes.length} recipes!`);
+}
+
+// ─── IMPORT ───────────────────────────────────────────────────────────────────
+function importRecipesFromFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      const incoming = data.recipes || (Array.isArray(data) ? data : []);
+      if (!incoming.length) { showToast('No recipes found in file'); return; }
+      mergeImportedRecipes(incoming);
+    } catch(e) {
+      showToast('⚠️ Could not read file — is it a valid FamilyEats export?');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function mergeImportedRecipes(incoming) {
+  let added = 0, skipped = 0;
+  incoming.forEach(rec => {
+    const exists = appData.recipes.some(r =>
+      r.id === rec.id || r.name.toLowerCase() === rec.name.toLowerCase()
+    );
+    if (!exists) {
+      // Ensure required fields
+      if (!rec.id) rec.id = Date.now().toString() + Math.random().toString(36).slice(2);
+      appData.recipes.push(rec);
+      added++;
+    } else { skipped++; }
+  });
+  saveData();
+  renderRecipes();
+  document.getElementById('settings-modal-dynamic')?.remove();
+  showToast(`✅ Added ${added} recipe${added!==1?'s':''}${skipped ? `, skipped ${skipped} duplicate${skipped!==1?'s':''}` : ''}!`);
+}
+
+// ─── SHARE CODE ───────────────────────────────────────────────────────────────
+
+
 
 // ─── FRIDAY NOTIFICATION CHECK ───────────────────────────────────────────────
 function checkFridayNotification() {
@@ -1565,6 +1832,33 @@ function checkFridayNotification() {
   }
 }
 </script>
+
+
+    <div class="pin-title" id="pin-title">Parent Access</div>
+    <div class="pin-subtitle" id="pin-subtitle">Enter your 4-digit PIN to manage recipes</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-grid">
+      <button class="pin-key" onclick="pinPress('1')">1</button>
+      <button class="pin-key" onclick="pinPress('2')">2</button>
+      <button class="pin-key" onclick="pinPress('3')">3</button>
+      <button class="pin-key" onclick="pinPress('4')">4</button>
+      <button class="pin-key" onclick="pinPress('5')">5</button>
+      <button class="pin-key" onclick="pinPress('6')">6</button>
+      <button class="pin-key" onclick="pinPress('7')">7</button>
+      <button class="pin-key" onclick="pinPress('8')">8</button>
+      <button class="pin-key" onclick="pinPress('9')">9</button>
+      <button class="pin-key wide" onclick="pinPress('0')">0</button>
+      <button class="pin-key del" onclick="pinDelete()">⌫</button>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+    <span class="pin-cancel" id="pin-cancel" onclick="closePinPad()">Cancel</span>
+  </div>
+</div>
 
 <!-- PWA SERVICE WORKER REGISTRATION -->
 <script>
