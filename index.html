@@ -346,6 +346,49 @@
   @keyframes confettiFall {
     to { transform: translateY(110vh) rotate(720deg); opacity: 0; }
   }
+
+  /* AI SCAN */
+  .scan-box {
+    border: 2px dashed #ccc; border-radius: 12px; overflow: hidden;
+    background: var(--cream); transition: border-color 0.2s;
+  }
+  .scan-box.has-image { border-color: var(--green); border-style: solid; }
+  .scan-img-preview {
+    width: 100%; max-height: 180px; object-fit: cover; display: block;
+  }
+  .scan-actions {
+    display: flex; gap: 8px; padding: 10px;
+    background: var(--green-pale); border-top: 1px solid #b7e4c7;
+  }
+  .scan-placeholder {
+    padding: 24px; text-align: center; cursor: pointer;
+  }
+  .scan-placeholder:hover { background: var(--green-pale); }
+  .ai-thinking {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; background: var(--green-pale);
+    border-radius: 10px; font-size: 13px; color: var(--green);
+    font-weight: 600;
+  }
+  .spinner {
+    width: 18px; height: 18px; border: 2px solid var(--green-pale);
+    border-top-color: var(--green); border-radius: 50%;
+    animation: spin 0.7s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ingredient-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--green-pale); border: 1px solid #b7e4c7;
+    color: var(--green); border-radius: 20px; padding: 4px 10px;
+    font-size: 13px; margin: 3px;
+  }
+  .ingredient-tag button {
+    background: none; border: none; cursor: pointer; color: var(--green);
+    font-size: 14px; line-height: 1; padding: 0 2px;
+    font-weight: 700; opacity: 0.7;
+  }
+  .ingredient-tag button:hover { opacity: 1; }
+  .ing-tags-wrap { display: flex; flex-wrap: wrap; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -434,14 +477,6 @@
       </select>
     </div>
     <div class="form-group">
-      <label class="form-label">Ingredients (one per line)</label>
-      <textarea class="form-input" id="rec-ingredients" placeholder="2 tbsp olive oil&#10;1 onion, diced&#10;400g chickpeas"></textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Recipe Notes / Method</label>
-      <textarea class="form-input" id="rec-notes" placeholder="Brief cooking notes..."></textarea>
-    </div>
-    <div class="form-group">
       <label class="form-label">Recipe Photo</label>
       <div class="upload-area" onclick="document.getElementById('rec-photo-input').click()">
         <input type="file" id="rec-photo-input" accept="image/*" onchange="handlePhotoUpload(event)">
@@ -451,8 +486,33 @@
         </div>
       </div>
     </div>
+
+    <div class="form-group">
+      <label class="form-label">📸 Scan Ingredients from Photo</label>
+      <p style="font-size:12px;color:var(--mid);margin-bottom:8px;">Take a photo of your recipe's ingredient list — AI will extract them automatically!</p>
+      <div class="scan-box" id="scan-box">
+        <div class="scan-placeholder" onclick="document.getElementById('ing-scan-input').click()">
+          <input type="file" id="ing-scan-input" accept="image/*" capture="environment" style="display:none" onchange="handleIngredientScan(event)">
+          <div style="font-size:32px;margin-bottom:6px;">🔍</div>
+          <div style="font-size:14px;color:var(--mid);">Tap to photograph ingredient list</div>
+          <div style="font-size:11px;color:#aaa;margin-top:4px;">Works with handwritten or printed recipes</div>
+        </div>
+      </div>
+      <div id="scan-status"></div>
+      <div id="ing-tags-output" class="ing-tags-wrap"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Ingredients <span style="font-weight:400;text-transform:none;font-size:11px;color:#aaa;">(edit or add manually)</span></label>
+      <textarea class="form-input" id="rec-ingredients" placeholder="2 tbsp olive oil&#10;1 onion, diced&#10;400g chickpeas" style="min-height:100px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Recipe Notes / Method</label>
+      <textarea class="form-input" id="rec-notes" placeholder="Brief cooking notes..."></textarea>
+    </div>
     <input type="hidden" id="rec-edit-id">
     <input type="hidden" id="rec-photo-data">
+    <input type="hidden" id="rec-ing-scan-data">
     <div class="flex gap-8">
       <button class="btn btn-outline btn-full" onclick="closeModal('recipe-modal')">Cancel</button>
       <button class="btn btn-primary btn-full" onclick="saveRecipe()">Save Recipe 💾</button>
@@ -800,6 +860,18 @@ function openAddRecipe(editId) {
   document.getElementById('rec-photo-data').value = '';
   document.getElementById('rec-edit-id').value = editId || '';
   document.getElementById('photo-preview-wrap').innerHTML = `<div class="upload-icon">📷</div><div class="upload-text">Tap to take a photo or upload</div>`;
+  // Reset scan state
+  scannedIngredients = [];
+  document.getElementById('ing-tags-output').innerHTML = '';
+  document.getElementById('scan-status').innerHTML = '';
+  document.getElementById('scan-box').classList.remove('has-image');
+  document.getElementById('scan-box').innerHTML = `
+    <div class="scan-placeholder" onclick="document.getElementById('ing-scan-input').click()">
+      <input type="file" id="ing-scan-input" accept="image/*" capture="environment" style="display:none" onchange="handleIngredientScan(event)">
+      <div style="font-size:32px;margin-bottom:6px;">🔍</div>
+      <div style="font-size:14px;color:var(--mid);">Tap to photograph ingredient list</div>
+      <div style="font-size:11px;color:#aaa;margin-top:4px;">Works with handwritten or printed recipes</div>
+    </div>`;
 
   if (editId) {
     const rec = appData.recipes.find(r => r.id === editId);
@@ -840,6 +912,135 @@ function clearPhoto(e) {
   e.stopPropagation();
   document.getElementById('rec-photo-data').value = '';
   document.getElementById('photo-preview-wrap').innerHTML = `<div class="upload-icon">📷</div><div class="upload-text">Tap to take a photo or upload</div>`;
+}
+
+// ─── INGREDIENT SCAN (AI) ─────────────────────────────────────────────────────
+let scannedIngredients = [];
+
+async function handleIngredientScan(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    const base64 = ev.target.result;
+    const base64Data = base64.split(',')[1];
+    const mediaType = file.type || 'image/jpeg';
+
+    // Show preview in scan box
+    const scanBox = document.getElementById('scan-box');
+    scanBox.classList.add('has-image');
+    scanBox.innerHTML = `
+      <img src="${base64}" class="scan-img-preview">
+      <div class="scan-actions">
+        <button class="btn btn-primary btn-sm" style="flex:1;" onclick="document.getElementById('ing-scan-input').click()">📷 Rescan</button>
+        <button class="btn btn-outline btn-sm" style="flex:1;" onclick="clearScan()">✕ Clear</button>
+      </div>
+      <input type="file" id="ing-scan-input" accept="image/*" capture="environment" style="display:none" onchange="handleIngredientScan(event)">
+    `;
+
+    // Show thinking state
+    document.getElementById('scan-status').innerHTML = `
+      <div class="ai-thinking" style="margin-top:10px;">
+        <div class="spinner"></div>
+        <span>AI is reading your ingredient list…</span>
+      </div>`;
+    document.getElementById('ing-tags-output').innerHTML = '';
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: { type: 'base64', media_type: mediaType, data: base64Data }
+              },
+              {
+                type: 'text',
+                text: `Extract ONLY the ingredients list from this recipe photo. Return ONLY a JSON array of strings — one ingredient per item, preserving quantities and units. No other text, no markdown, no explanation. Example: ["2 tbsp olive oil", "1 large onion diced", "400g tinned tomatoes"]`
+              }
+            ]
+          }]
+        })
+      });
+
+      const data = await response.json();
+      const raw = data.content?.map(c => c.text || '').join('').trim();
+
+      // Parse JSON safely
+      const cleaned = raw.replace(/```json|```/g, '').trim();
+      let ingredients = [];
+      try {
+        ingredients = JSON.parse(cleaned);
+        if (!Array.isArray(ingredients)) throw new Error('Not array');
+      } catch(e) {
+        // Fallback: split by newlines if JSON parse fails
+        ingredients = cleaned.split('\n').map(l => l.replace(/^[-•*]\s*/, '').trim()).filter(Boolean);
+      }
+
+      scannedIngredients = ingredients;
+      renderIngredientTags();
+      mergeIngredientsToTextarea();
+
+      document.getElementById('scan-status').innerHTML = `
+        <div style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:13px;color:var(--green);font-weight:600;">
+          ✅ Found ${ingredients.length} ingredient${ingredients.length !== 1 ? 's' : ''}! Tap × to remove any.
+        </div>`;
+
+    } catch (err) {
+      document.getElementById('scan-status').innerHTML = `
+        <div style="margin-top:8px;padding:10px;background:#fff0f0;border-radius:8px;font-size:13px;color:var(--red);">
+          ⚠️ Couldn't read the image. Please type ingredients manually below, or try a clearer photo.
+        </div>`;
+      console.error('Scan error:', err);
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderIngredientTags() {
+  const wrap = document.getElementById('ing-tags-output');
+  wrap.innerHTML = scannedIngredients.map((ing, i) =>
+    `<span class="ingredient-tag">
+      ${ing}
+      <button onclick="removeIngredientTag(${i})" title="Remove">×</button>
+    </span>`
+  ).join('');
+}
+
+function removeIngredientTag(idx) {
+  scannedIngredients.splice(idx, 1);
+  renderIngredientTags();
+  mergeIngredientsToTextarea();
+}
+
+function mergeIngredientsToTextarea() {
+  const existing = document.getElementById('rec-ingredients').value.trim();
+  const scanned = scannedIngredients.join('\n');
+  // Merge: keep any manually typed lines, then add scanned (avoid duplicates)
+  const existingLines = existing ? existing.split('\n').map(l => l.trim()).filter(Boolean) : [];
+  const merged = [...new Set([...scanned.split('\n').filter(Boolean), ...existingLines])];
+  document.getElementById('rec-ingredients').value = merged.join('\n');
+}
+
+function clearScan() {
+  scannedIngredients = [];
+  document.getElementById('scan-box').classList.remove('has-image');
+  document.getElementById('scan-box').innerHTML = `
+    <div class="scan-placeholder" onclick="document.getElementById('ing-scan-input').click()">
+      <input type="file" id="ing-scan-input" accept="image/*" capture="environment" style="display:none" onchange="handleIngredientScan(event)">
+      <div style="font-size:32px;margin-bottom:6px;">🔍</div>
+      <div style="font-size:14px;color:var(--mid);">Tap to photograph ingredient list</div>
+      <div style="font-size:11px;color:#aaa;margin-top:4px;">Works with handwritten or printed recipes</div>
+    </div>`;
+  document.getElementById('scan-status').innerHTML = '';
+  document.getElementById('ing-tags-output').innerHTML = '';
 }
 
 function saveRecipe() {
