@@ -639,23 +639,35 @@ async function fetchLocalRecipes() {
   const allRecipes = [];
   for (const folder of folders) {
     try {
-      const idxRes = await fetch(`${folder.path}/recipes_index.json`);
+      const idxUrl = `${folder.path}/recipes_index.json`;
+      console.log('[FamilyEats] Fetching index:', idxUrl);
+      const idxRes = await fetch(idxUrl);
+      console.log('[FamilyEats] Index response:', idxRes.status, idxRes.url);
       if (!idxRes.ok) {
-        console.warn(`No recipes_index.json in ${folder.path} — run make_indexes.py`);
+        console.warn('[FamilyEats] Index not found in', folder.path, '— status', idxRes.status);
+        showToast(`⚠️ No index in ${folder.path} (${idxRes.status})`);
         continue;
       }
       const filenames = await idxRes.json();
+      console.log('[FamilyEats] Found', filenames.length, 'recipes in', folder.path, ':', filenames);
       for (const name of filenames) {
         try {
-          const r = await (await fetch(`${folder.path}/${name}`)).json();
+          const recUrl = `${folder.path}/${name}`;
+          const r = await (await fetch(recUrl)).json();
           r.track = r.track || folder.track;
           r.id    = r.id    || name.replace('.json', '');
           r.photo = resolveRecipePhoto(r.id, r.photo);
           allRecipes.push(r);
-        } catch(e) { console.warn('Failed to load recipe:', name, e); }
+        } catch(e) {
+          console.error('[FamilyEats] Failed to load recipe:', name, e);
+        }
       }
-    } catch(e) { console.warn('Failed to load index for', folder.path, e); }
+    } catch(e) {
+      console.error('[FamilyEats] Failed to load index for', folder.path, e);
+      showToast(`⚠️ Could not load ${folder.path}`);
+    }
   }
+  console.log('[FamilyEats] Total recipes loaded:', allRecipes.length);
   return allRecipes;
 }
 
@@ -840,8 +852,8 @@ function renderPlan() {
           <span class="day-name">${d.label}</span>
           <span class="badge badge-green">🥦 All Plant Based</span>
         </div>
-        <div class="day-shared-meal" ${plan.shared ? `onclick="openRecipeDetailByName('${plan.shared.replace(/'/g,'\\'')}')" style="cursor:pointer;"` : ''}>
-          ${plan.shared ? `<strong>${plan.shared}</strong>` : '<span style="color:#aaa;font-style:italic">No meal set</span>'}
+        <div class="day-shared-meal" ${plan.shared ? 'data-recipe="' + plan.shared + '" style="cursor:pointer;"' : ''}>
+          ${plan.shared ? '<strong>' + plan.shared + '</strong>' : '<span style="color:#aaa;">No meal set</span>'}
         </div>
       </div>`;
     }
@@ -851,19 +863,19 @@ function renderPlan() {
           <span class="day-name">${d.label}</span>
           <span class="badge badge-amber">🍖 All Meat</span>
         </div>
-        <div class="day-shared-meal" ${plan.shared ? `onclick="openRecipeDetailByName('${plan.shared.replace(/'/g,'\\'')}')" style="cursor:pointer;"` : ''}>
-          ${plan.shared ? `<strong>${plan.shared}</strong>` : '<span style="color:#aaa;font-style:italic">No meal set</span>'}
+        <div class="day-shared-meal" ${plan.shared ? 'data-recipe="' + plan.shared + '" style="cursor:pointer;"' : ''}>
+          ${plan.shared ? '<strong>' + plan.shared + '</strong>' : '<span style="color:#aaa;">No meal set</span>'}
         </div>
       </div>`;
     }
     return `<div class="day-row">
       <div class="day-header"><span class="day-name">${d.label}</span></div>
       <div class="day-tracks">
-        <div class="day-track track-plant" ${plan.plant ? `onclick="openRecipeDetailByName('${plan.plant ? plan.plant.replace(/'/g,"\\'") : ''}')"  style="cursor:pointer;"` : ''}>
+        <div class="day-track track-plant" ${plan.plant ? 'data-recipe="' + plan.plant + '" style="cursor:pointer;"' : ''}>
           <div class="track-label">🥦 Plant</div>
           <div class="${plan.plant ? 'track-assigned' : 'track-empty'}">${plan.plant || 'Not set'}</div>
         </div>
-        <div class="day-track track-meat" ${plan.meat ? `onclick="openRecipeDetailByName('${plan.meat ? plan.meat.replace(/'/g,"\\'") : ''}')" style="cursor:pointer;"` : ''}>
+        <div class="day-track track-meat" ${plan.meat ? 'data-recipe="' + plan.meat + '" style="cursor:pointer;"' : ''}>
           <div class="track-label">🍖 Meat</div>
           <div class="${plan.meat ? 'track-assigned' : 'track-empty'}">${plan.meat || 'Not set'}</div>
         </div>
@@ -1638,6 +1650,12 @@ document.addEventListener('DOMContentLoaded', () => {
   renderVote();
   checkFridayNotification();
   syncAll();
+
+  // Delegated click handler for week grid — avoids inline onclick quoting issues
+  document.getElementById('week-grid').addEventListener('click', e => {
+    const el = e.target.closest('[data-recipe]');
+    if (el) openRecipeDetailByName(el.dataset.recipe);
+  });
 
   // Prompt for name on first launch
   if (!getUserName()) {
