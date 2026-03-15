@@ -1040,18 +1040,25 @@ function renderRecipes() {
 
   grid.innerHTML = recipes.map(r => {
     const stars = r.avgRating > 0 ? '⭐'.repeat(Math.round(r.avgRating)) : '';
-    return `<div class="recipe-thumb" onclick="openRecipeDetail('${r.id}')">
-      <div class="recipe-thumb-img">
-        ${r.photo
-          ? `<img src="${r.photo}" onerror="if(this.src.endsWith('.png')){this.src=this.src.replace('.png','.jpg')}else{this.style.display='none'}">`
-          : (r.track === 'plant' ? '🥦' : r.track === 'meat' ? '🍖' : '🤝')}
-      </div>
+    const emoji = r.track === 'plant' ? '🥦' : r.track === 'meat' ? '🍖' : '🤝';
+    const imgHtml = r.photo
+      ? `<img src="${r.photo}" style="width:100%;height:100%;object-fit:cover;"
+           onerror="this.src=this.src.endsWith('.png')?this.src.replace('.png','.jpg'):'';this.onerror=null;if(!this.src)this.parentElement.textContent='${emoji}'">`
+      : emoji;
+    return `<div class="recipe-thumb" data-recipe-id="${r.id}">
+      <div class="recipe-thumb-img">${imgHtml}</div>
       <div class="recipe-thumb-body">
         <div class="recipe-thumb-name">${r.name}</div>
         ${stars ? `<div class="recipe-stars">${stars}</div>` : ''}
       </div>
     </div>`;
   }).join('');
+
+  // Delegated click — avoids inline onclick quoting issues
+  grid.onclick = e => {
+    const thumb = e.target.closest('[data-recipe-id]');
+    if (thumb) openRecipeDetail(thumb.dataset.recipeId);
+  };
 }
 
 async function handlePhotoUpload(e) {
@@ -1736,7 +1743,10 @@ function showSecretSettings() {
       <div style="font-size:12px;color:var(--mid);margin-bottom:10px;line-height:1.6;">
         Recipes load from the <code style="background:#fff;padding:1px 5px;border-radius:4px;">plant_based_recipes/</code> and <code style="background:#fff;padding:1px 5px;border-radius:4px;">meat_recipes/</code> folders alongside this app.
       </div>
-      <button class="btn btn-primary btn-full btn-sm" onclick="syncAll();document.getElementById('settings-modal-dynamic').remove()">🔄 Reload Recipes</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary btn-full btn-sm" onclick="syncAll();document.getElementById('settings-modal-dynamic').remove()">🔄 Reload Recipes</button>
+        <button class="btn btn-outline btn-sm" onclick="appData.weekPlan={};saveLocal();renderPlan();showToast('Week plan cleared');document.getElementById('settings-modal-dynamic').remove();" title="Clear saved week plan">🗑️</button>
+      </div>
     </div>
 
     <!-- JSONBIN: VOTES + REVIEWS -->
