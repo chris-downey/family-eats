@@ -397,7 +397,7 @@
 <div id="page-recipes" class="page">
   <div class="page-header">
     <h1 class="page-title">📖 Recipes</h1>
-    <button class="btn btn-primary btn-sm" onclick="openAddRecipe()">+ Add</button>
+
   </div>
 
   <div class="tabs">
@@ -558,10 +558,15 @@
 
 <script>
 // ─── DATA STORE ───────────────────────────────────────────────────────────────
-const DB_KEY        = 'familyEatsData_v3';
-const CLOUD_CFG_KEY = 'familyEats_cloudCfg';   // stores { binId, apiKey }
+// Recipes  → GitHub public repo (read-only, managed as JSON files)
+// Votes + Reviews → JSONBin (written by the app, shared across family)
+// Week plan + Shopping → localStorage (per-device)
 
-// ── Local cache ──────────────────────────────────────────────────────────────
+const DB_KEY        = 'familyEatsData_v4';
+const CLOUD_CFG_KEY = 'familyEats_cloudCfg';  // { binId, apiKey }
+const GH_CFG_KEY    = 'familyEats_ghCfg';     // { owner, repo }
+
+// ── Local cache ───────────────────────────────────────────────────────────────
 function loadData() {
   try {
     const raw = localStorage.getItem(DB_KEY);
@@ -573,20 +578,71 @@ function saveLocal() {
   localStorage.setItem(DB_KEY, JSON.stringify(appData));
 }
 
-// ── Cloud config ─────────────────────────────────────────────────────────────
+// ── GitHub config ─────────────────────────────────────────────────────────────
+function getGhCfg() {
+  try { return JSON.parse(localStorage.getItem(GH_CFG_KEY)) || {}; } catch(e) { return {}; }
+}
+function saveGhCfg(cfg) { localStorage.setItem(GH_CFG_KEY, JSON.stringify(cfg)); }
+function isGhConfigured() { const c = getGhCfg(); return !!(c.owner && c.repo); }
+
+// ── JSONBin config (votes + reviews only) ────────────────────────────────────
 function getCloudCfg() {
   try { return JSON.parse(localStorage.getItem(CLOUD_CFG_KEY)) || {}; } catch(e) { return {}; }
 }
-function saveCloudCfg(cfg) {
-  localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify(cfg));
-}
-function isCloudConfigured() {
-  const c = getCloudCfg();
-  return !!(c.binId && c.apiKey);
+function saveCloudCfg(cfg) { localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify(cfg)); }
+function isCloudConfigured() { const c = getCloudCfg(); return !!(c.binId && c.apiKey); }
+
+// ── GitHub recipe fetching ────────────────────────────────────────────────────
+// Images live in recipe_images/IMG_<recipe-id>.<ext> in the same repo.
+// We build a raw.githubusercontent.com URL — no API call, no external service.
+function githubRawBase(owner, repo) {
+  return `https://raw.githubusercontent.com/${owner}/${repo}/main`;
 }
 
-// ── JSONBin API helpers ───────────────────────────────────────────────────────
-async function cloudRead() {
+function resolveRecipePhoto(owner, repo, recipeId, jsonPhoto) {
+  // If the JSON already has a full URL, use it
+  if (jsonPhoto && (jsonPhoto.startsWith('http://') || jsonPhoto.startsWith('https://'))) {
+    return jsonPhoto;
+  }
+  // Otherwise build the raw GitHub URL for recipe_images/IMG_<id>
+  // Try .png first — the <img> tag will fall back gracefully if missing
+  const base = githubRawBase(owner, repo);
+  return `${base}/recipe_images/IMG_${recipeId}.png`;
+}
+
+async function fetchGithubRecipes() {
+  const { owner, repo } = getGhCfg();
+  if (!owner || !repo) return [];
+  const folders = [
+    { path: 'plant_based_recipes', track: 'plant' },
+    { path: 'meat_recipes',        track: 'meat'  }
+  ];
+  const allRecipes = [];
+  for (const folder of folders) {
+    try {
+      const res = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/contents/${folder.path}`,
+        { headers: { Accept: 'application/vnd.github.v3+json' } }
+      );
+      if (!res.ok) continue;
+      const files = await res.json();
+      for (const file of files.filter(f => f.name.endsWith('.json'))) {
+        try {
+          const r = await (await fetch(file.download_url)).json();
+          r.track = r.track || folder.track;
+          r.id    = r.id    || file.name.replace('.json', '');
+          // Resolve photo from recipe_images folder
+          r.photo = resolveRecipePhoto(owner, repo, r.id, r.photo);
+          allRecipes.push(r);
+        } catch(e) {}
+      }
+    } catch(e) {}
+  }
+  return allRecipes;
+}
+
+// ── JSONBin helpers (votes + reviews) ────────────────────────────────────────
+async function binRead() {
   const { binId, apiKey } = getCloudCfg();
   if (!binId || !apiKey) return null;
   try {
@@ -594,85 +650,73 @@ async function cloudRead() {
       headers: { 'X-Master-Key': apiKey }
     });
     if (!res.ok) return null;
-    const json = await res.json();
-    return json.record || null;
+    return (await res.json()).record || null;
   } catch(e) { return null; }
 }
-
-function isUrlPhoto(photo) {
-  // True if it's an external URL (imgur etc), not a base64 blob
-  return photo && (photo.startsWith('http://') || photo.startsWith('https://'));
-}
-
-async function cloudWrite(data) {
+async function binWrite() {
   const { binId, apiKey } = getCloudCfg();
   if (!binId || !apiKey) return false;
   try {
-    const cloudData = {
-      ...data,
-      // Keep imgur URLs, strip base64 blobs (too large for JSONBin)
-      recipes: data.recipes.map(r => ({
-        ...r,
-        photo: isUrlPhoto(r.photo) ? r.photo : (r.photo ? '__has_photo__' : null)
-      })),
-      dadJokePhoto: null
+    const payload = {
+      votes: appData.votes, votesSubmitted: appData.votesSubmitted,
+      reviews: appData.reviews, weekPlan: appData.weekPlan
     };
     const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey },
-      body: JSON.stringify(cloudData)
+      body: JSON.stringify(payload)
     });
     return res.ok;
   } catch(e) { return false; }
 }
 
-// ── Main save — always saves locally, pushes to cloud if configured ───────────
+// ── Main save ─────────────────────────────────────────────────────────────────
 async function saveData(pushCloud = true) {
   saveLocal();
   if (pushCloud && isCloudConfigured()) {
     showSyncStatus('syncing');
-    const ok = await cloudWrite(appData);
+    const ok = await binWrite();
     showSyncStatus(ok ? 'ok' : 'error');
   }
 }
 
-// ── Pull from cloud on load — merges into local ───────────────────────────────
-async function syncFromCloud() {
-  if (!isCloudConfigured()) return;
+// ── Full sync on load ─────────────────────────────────────────────────────────
+async function syncAll() {
   showSyncStatus('syncing');
-  const remote = await cloudRead();
-  if (!remote) { showSyncStatus('error'); return; }
-
-  // Merge recipes: cloud wins for recipe list, preserve local photos
-  const localPhotos = {};
-  appData.recipes.forEach(r => { if (r.photo) localPhotos[r.id] = r.photo; });
-
-  appData.recipes     = (remote.recipes || []).map(r => ({
-    ...r,
-    // If it's an imgur URL, use it directly. If it's the placeholder, fall back to local.
-    photo: isUrlPhoto(r.photo) ? r.photo
-         : r.photo === '__has_photo__' ? (localPhotos[r.id] || null)
-         : r.photo
-  }));
-  appData.weekPlan    = remote.weekPlan    || appData.weekPlan;
-  appData.votes       = remote.votes       || appData.votes;
-  appData.votesSubmitted = remote.votesSubmitted || appData.votesSubmitted;
-  appData.reviews     = remote.reviews     || appData.reviews;
-  // Keep local shoppingList checked-state and dadJokePhoto
-  saveLocal();
-  showSyncStatus('ok');
-  renderPlan(); renderRecipes(); renderVote(); renderShop(); renderReview();
+  let changed = false;
+  if (isGhConfigured()) {
+    const ghRecipes = await fetchGithubRecipes();
+    if (ghRecipes.length > 0) { appData.recipes = ghRecipes; changed = true; }
+  }
+  if (isCloudConfigured()) {
+    const remote = await binRead();
+    if (remote) {
+      appData.votes          = remote.votes          || appData.votes;
+      appData.votesSubmitted = remote.votesSubmitted || appData.votesSubmitted;
+      appData.reviews        = remote.reviews        || appData.reviews;
+      appData.weekPlan       = remote.weekPlan       || appData.weekPlan;
+      changed = true;
+    }
+  }
+  if (changed) {
+    saveLocal();
+    renderPlan(); renderRecipes(); renderVote(); renderShop(); renderReview();
+  }
+  showSyncStatus(isGhConfigured() || isCloudConfigured() ? 'ok' : 'idle');
 }
 
-// ── Sync status indicator ─────────────────────────────────────────────────────
+// ── Sync status dot ───────────────────────────────────────────────────────────
 function showSyncStatus(state) {
   const el = document.getElementById('sync-status-dot');
   if (!el) return;
-  el.title = state === 'syncing' ? 'Syncing…' : state === 'ok' ? 'Synced ✅' : 'Sync error ⚠️';
-  el.style.background = state === 'syncing' ? '#f4a261' : state === 'ok' ? '#52b788' : '#c1121f';
-  if (state === 'ok') setTimeout(() => { el.style.background = '#ccc'; }, 3000);
+  el.title = state === 'syncing' ? 'Syncing…' : state === 'ok' ? 'Synced ✅' : state === 'idle' ? 'Not configured' : 'Sync error ⚠️';
+  el.style.background = state === 'syncing' ? '#f4a261' : state === 'ok' ? '#52b788' : state === 'idle' ? '#ccc' : '#c1121f';
+  if (state === 'ok') setTimeout(() => { el.style.background = '#52b788'; }, 3000);
 }
 
+function isUrlPhoto(photo) {
+  return photo && (photo.startsWith('http://') || photo.startsWith('https://'));
+}
 let appData = loadData();
 let currentRecipeTab = 'plant';
 let currentVoteTab = 'plant';
@@ -858,7 +902,10 @@ function generateShoppingList() {
   mealNames.forEach(name => {
     const rec = appData.recipes.find(r => r.name === name);
     if (rec && rec.ingredients) {
-      rec.ingredients.split('\n').forEach(ing => {
+      const ingList = Array.isArray(rec.ingredients)
+        ? rec.ingredients
+        : rec.ingredients.split('\n');
+      ingList.forEach(ing => {
         const trimmed = ing.trim();
         if (trimmed) items.push({ text: trimmed, recipe: name, checked: false, id: Date.now() + Math.random() });
       });
@@ -910,48 +957,7 @@ function clearChecked() {
 }
 
 // ─── RECIPES ──────────────────────────────────────────────────────────────────
-function openAddRecipe(editId) {
-  editingRecipeId = editId || null;
-  document.getElementById('recipe-modal-title').textContent = editId ? 'Edit Recipe' : 'Add Recipe';
-  document.getElementById('rec-name').value = '';
-  document.getElementById('rec-track').value = 'plant';
-  document.getElementById('rec-ingredients').value = '';
-  document.getElementById('rec-notes').value = '';
-  document.getElementById('rec-photo-data').value = '';
-  document.getElementById('rec-edit-id').value = editId || '';
-  document.getElementById('photo-preview-wrap').innerHTML = `<div class="upload-icon">📷</div><div class="upload-text">Tap to take a photo or upload</div>`;
-  // Reset scan state
-  scannedIngredients = [];
-  document.getElementById('ing-tags-output').innerHTML = '';
-  document.getElementById('scan-status').innerHTML = '';
-  document.getElementById('scan-box').classList.remove('has-image');
-  document.getElementById('scan-box').innerHTML = `
-    <div class="scan-placeholder" onclick="document.getElementById('ing-scan-input').click()">
-      <input type="file" id="ing-scan-input" accept="image/*" capture="environment" style="display:none" onchange="handleIngredientScan(event)">
-      <div style="font-size:32px;margin-bottom:6px;">🔍</div>
-      <div style="font-size:14px;color:var(--mid);">Tap to photograph ingredient list</div>
-      <div style="font-size:11px;color:#aaa;margin-top:4px;">Works with handwritten or printed recipes</div>
-    </div>`;
-
-  if (editId) {
-    const rec = appData.recipes.find(r => r.id === editId);
-    if (rec) {
-      document.getElementById('rec-name').value = rec.name;
-      document.getElementById('rec-track').value = rec.track;
-      document.getElementById('rec-ingredients').value = rec.ingredients || '';
-      document.getElementById('rec-notes').value = rec.notes || '';
-      if (rec.photo) {
-        document.getElementById('rec-photo-data').value = rec.photo;
-        document.getElementById('photo-preview-wrap').innerHTML = `
-          <div class="img-preview-wrap">
-            <img src="${rec.photo}" class="img-preview">
-            <button class="img-remove" onclick="clearPhoto(event)">✕</button>
-          </div>`;
-      }
-    }
-  }
-  openModal('recipe-modal');
-}
+function openAddRecipe() { showToast("Recipes are managed via GitHub files."); }
 
 async function handlePhotoUpload(e) {
   const file = e.target.files[0];
@@ -969,38 +975,9 @@ async function handlePhotoUpload(e) {
         <div id="photo-upload-status" style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.6);color:white;font-size:11px;padding:3px 8px;border-radius:10px;">⬆️ Uploading…</div>
       </div>`;
 
-    // Upload to imgur (anonymous, no account needed)
-    try {
-      const base64 = localDataUrl.split(',')[1];
-      const formData = new FormData();
-      formData.append('image', base64);
-      formData.append('type', 'base64');
-
-      const res = await fetch('https://api.imgur.com/3/image', {
-        method: 'POST',
-        headers: { 'Authorization': 'Client-ID 546c25a59c58ad7' },
-        body: formData
-      });
-      const data = await res.json();
-
-      if (data.success && data.data?.link) {
-        const imgurUrl = data.data.link;
-        // Store the imgur URL instead of the base64
-        document.getElementById('rec-photo-data').value = imgurUrl;
-        const statusEl = document.getElementById('photo-upload-status');
-        if (statusEl) statusEl.innerHTML = '☁️ Saved — everyone will see this photo';
-        setTimeout(() => statusEl?.remove(), 3000);
-      } else {
-        // Imgur failed — keep local base64 as fallback
-        const statusEl = document.getElementById('photo-upload-status');
-        if (statusEl) statusEl.innerHTML = '📱 Saved locally only';
-        setTimeout(() => statusEl?.remove(), 3000);
-      }
-    } catch(err) {
-      const statusEl = document.getElementById('photo-upload-status');
-      if (statusEl) statusEl.innerHTML = '📱 Saved locally only';
-      setTimeout(() => statusEl?.remove(), 3000);
-    }
+    // Photo stored locally (recipes now managed via GitHub)
+    const statusEl = document.getElementById('photo-upload-status');
+    if (statusEl) { statusEl.textContent = '📱 Preview only — manage recipe photos via GitHub'; setTimeout(() => statusEl.remove(), 3000); }
   };
   reader.readAsDataURL(file);
 }
@@ -1235,55 +1212,7 @@ function clearScan() {
   document.getElementById('ing-tags-output').innerHTML = '';
 }
 
-function saveRecipe() {
-  const name = document.getElementById('rec-name').value.trim();
-  if (!name) { showToast('Please enter a recipe name!'); return; }
-  const track = document.getElementById('rec-track').value;
-  const ingredients = document.getElementById('rec-ingredients').value.trim();
-  const notes = document.getElementById('rec-notes').value.trim();
-  const photo = document.getElementById('rec-photo-data').value;
-  const editId = document.getElementById('rec-edit-id').value;
-
-  if (editId) {
-    const idx = appData.recipes.findIndex(r => r.id === editId);
-    if (idx >= 0) appData.recipes[idx] = { ...appData.recipes[idx], name, track, ingredients, notes, photo };
-  } else {
-    appData.recipes.push({ id: Date.now().toString(), name, track, ingredients, notes, photo, rating: 0, reviews: [] });
-  }
-  saveData(); closeModal('recipe-modal'); renderRecipes();
-  showToast(editId ? 'Recipe updated! ✅' : 'Recipe added! 🎉');
-}
-
-function switchRecipeTab(tab, btn) {
-  currentRecipeTab = tab;
-  document.querySelectorAll('#page-recipes .tab-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderRecipes();
-}
-
-function renderRecipes() {
-  const grid = document.getElementById('recipe-grid');
-  const filtered = appData.recipes.filter(r => r.track === currentRecipeTab);
-  if (!filtered.length) {
-    grid.innerHTML = `<div style="grid-column:1/-1"><div class="empty-state">
-      <div class="empty-icon">${currentRecipeTab === 'plant' ? '🥦' : currentRecipeTab === 'meat' ? '🍖' : '🤝'}</div>
-      <div class="empty-text">No ${currentRecipeTab === 'plant' ? 'plant based' : currentRecipeTab === 'meat' ? 'meat' : 'shared'} recipes yet.<br>Tap + Add to get started!</div>
-    </div></div>`;
-    return;
-  }
-  grid.innerHTML = filtered.map(r => {
-    const stars = r.avgRating > 0 ? '⭐'.repeat(Math.round(r.avgRating)) : '☆☆☆☆☆';
-    return `<div class="recipe-thumb" onclick="openRecipeDetail('${r.id}')">
-      <div class="recipe-thumb-img">
-        ${r.photo ? `<img src="${r.photo}">` : (currentRecipeTab === 'plant' ? '🥦' : currentRecipeTab === 'meat' ? '🍖' : '🤝')}
-      </div>
-      <div class="recipe-thumb-body">
-        <div class="recipe-thumb-name">${r.name}</div>
-        <div class="recipe-stars">${stars}</div>
-      </div>
-    </div>`;
-  }).join('');
-}
+function saveRecipe() {}
 
 function openRecipeDetail(id) {
   const rec = appData.recipes.find(r => r.id === id);
@@ -1298,35 +1227,65 @@ function openRecipeDetail(id) {
       ${rv.comment ? `<div style="font-size:13px;">${rv.comment}</div>` : ''}
     </div>`).join('');
 
+  // Normalise ingredients and method to arrays regardless of stored format
+  const ingArr  = Array.isArray(rec.ingredients) ? rec.ingredients
+                  : (rec.ingredients || '').split('\n').filter(Boolean);
+  const methArr = Array.isArray(rec.method) ? rec.method
+                  : (rec.method || '').split(/\n{2,}|\n/).filter(Boolean);
+
+  const ingHtml = ingArr.length
+    ? `<div class="section-title">Ingredients</div>
+       <div style="background:var(--cream);border-radius:10px;padding:14px;font-size:14px;line-height:1.9;">
+         ${ingArr.map(i => `<div style="display:flex;gap:8px;"><span style="color:var(--green);flex-shrink:0;">•</span><span>${i}</span></div>`).join('')}
+       </div>`
+    : '';
+
+  const methHtml = methArr.length
+    ? `<div class="section-title">Method</div>
+       <div style="font-size:14px;line-height:1.7;">
+         ${methArr.map((s,i) => `<div style="display:flex;gap:10px;margin-bottom:12px;">
+           <span style="background:var(--green);color:white;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:2px;">${i+1}</span>
+           <span>${s}</span></div>`).join('')}
+       </div>`
+    : '';
+
+  const metaHtml = (rec.serves || rec.difficulty)
+    ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+        ${rec.serves     ? `<span style="background:var(--light);border-radius:20px;padding:4px 12px;font-size:12px;">👥 Serves ${rec.serves}</span>` : ''}
+        ${rec.difficulty ? `<span style="background:var(--light);border-radius:20px;padding:4px 12px;font-size:12px;">📊 ${rec.difficulty}</span>` : ''}
+       </div>`
+    : '';
+
+  const descHtml = rec.description
+    ? `<p style="font-size:14px;line-height:1.6;color:var(--mid);margin-bottom:14px;">${rec.description}</p>`
+    : '';
+
+  const sourceHtml = rec.source_url
+    ? `<p style="font-size:11px;color:#aaa;margin-top:4px;">Source: <a href="${rec.source_url}" target="_blank" style="color:var(--green);">${rec.source_url.replace(/https?:\/\//, '').split('/')[0]}</a></p>`
+    : '';
+
   document.getElementById('recipe-detail-content').innerHTML = `
-    ${rec.photo ? `<img src="${rec.photo}" style="width:100%;height:200px;object-fit:cover;border-radius:16px;margin-bottom:16px;">` : ''}
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
-      <h2 style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;flex:1;">${rec.name}</h2>
-      <button class="btn btn-outline btn-sm" onclick="closeModal('recipe-detail-modal');openAddRecipe('${rec.id}')">✏️ Edit</button>
-    </div>
-    <span class="badge ${rec.track === 'plant' ? 'badge-green' : 'badge-amber'}" style="margin-bottom:14px;display:inline-block;">
+    ${rec.photo ? `<img src="${rec.photo}" style="width:100%;height:220px;object-fit:cover;border-radius:16px;margin-bottom:16px;" onerror="if(this.src.endsWith('.png')){this.src=this.src.replace('.png','.jpg')}else{this.style.display='none'}">` : ''}
+    <h2 style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;margin-bottom:6px;">${rec.name}</h2>
+    <span class="badge ${rec.track === 'plant' ? 'badge-green' : 'badge-amber'}" style="margin-bottom:10px;display:inline-block;">
       ${rec.track === 'plant' ? '🥦 Plant Based' : rec.track === 'meat' ? '🍖 Meat' : '🤝 Shared'}
     </span>
-    ${rec.ingredients ? `<div class="section-title">Ingredients</div>
-      <div style="background:var(--cream);border-radius:10px;padding:14px;font-size:14px;line-height:1.8;white-space:pre-line;">${rec.ingredients}</div>` : ''}
-    ${rec.notes ? `<div class="section-title">Notes</div>
-      <div style="font-size:14px;line-height:1.6;color:var(--mid);">${rec.notes}</div>` : ''}
+    ${metaHtml}
+    ${descHtml}
+    ${ingHtml}
+    ${methHtml}
+    ${rec.notes ? `<div class="section-title">Notes</div><div style="font-size:14px;line-height:1.6;color:var(--mid);">${rec.notes}</div>` : ''}
     <div class="section-title">Rating</div>
     <div style="font-size:16px;margin-bottom:12px;">${stars}</div>
     ${reviews ? `<div class="section-title">Reviews</div><div>${reviews}</div>` : ''}
-    <button class="btn btn-danger btn-sm" style="margin-top:16px;" onclick="deleteRecipe('${rec.id}')">🗑️ Delete Recipe</button>
-    <button class="btn btn-outline btn-full" style="margin-top:10px;" onclick="closeModal('recipe-detail-modal')">✕ Close</button>
+    ${sourceHtml}
+    <p style="font-size:11px;color:#aaa;text-align:center;margin-top:12px;">To add or remove recipes, update the files in your GitHub repo.</p>
+    <button class="btn btn-outline btn-full" style="margin-top:8px;" onclick="closeModal('recipe-detail-modal')">✕ Close</button>
   `;
   openModal('recipe-detail-modal');
 }
 
-function deleteRecipe(id) {
-  if (confirm('Delete this recipe?')) {
-    appData.recipes = appData.recipes.filter(r => r.id !== id);
-    saveData(); closeModal('recipe-detail-modal'); renderRecipes();
-    showToast('Recipe deleted');
-  }
-}
+function deleteRecipe() {}
 
 // ─── VOTING ───────────────────────────────────────────────────────────────────
 let myVotes = { plant: [], meat: [] };
@@ -1356,7 +1315,7 @@ function renderVoteList() {
     const voted = (myVotes[currentVoteTab] || []).includes(r.id);
     return `<div class="vote-recipe ${voted ? 'voted' : ''}" onclick="toggleVote('${r.id}')">
       <div class="vote-recipe-img">
-        ${r.photo ? `<img src="${r.photo}">` : (currentVoteTab === 'plant' ? '🥦' : '🍖')}
+        ${r.photo ? `<img src="${r.photo}" onerror="if(this.src.endsWith('.png')){this.src=this.src.replace('.png','.jpg')}else{this.parentElement.textContent=currentVoteTab==='plant'?'🥦':'🍖'}">` : (currentVoteTab === 'plant' ? '🥦' : '🍖')}
       </div>
       <div>
         <div class="vote-recipe-name">${r.name}</div>
@@ -1417,7 +1376,7 @@ function showVoteResults() {
 
   const renderRow = (r) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--light);">
     <div style="width:40px;height:40px;border-radius:8px;background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:20px;overflow:hidden;flex-shrink:0;">
-      ${r.photo ? `<img src="${r.photo}" style="width:100%;height:100%;object-fit:cover;">` : (r.track === 'plant' ? '🥦' : '🍖')}
+      ${r.photo ? `<img src="${r.photo}" style="width:100%;height:100%;object-fit:cover;" onerror="if(this.src.endsWith('.png')){this.src=this.src.replace('.png','.jpg')}else{this.parentElement.textContent=r.track==='plant'?'🥦':'🍖'}">` : (r.track === 'plant' ? '🥦' : '🍖')}
     </div>
     <div style="flex:1;"><div style="font-weight:600;font-size:14px;">${r.name}</div></div>
     <div style="font-weight:700;color:var(--green);">${r.voteCount} vote${r.voteCount !== 1 ? 's' : ''}</div>
@@ -1485,7 +1444,7 @@ function renderReview() {
     return `<div class="card card-body">
       <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;">
         <div style="width:56px;height:56px;border-radius:10px;background:var(--green-pale);display:flex;align-items:center;justify-content:center;font-size:28px;overflow:hidden;flex-shrink:0;">
-          ${r.photo ? `<img src="${r.photo}" style="width:100%;height:100%;object-fit:cover;">` : (r.track === 'plant' ? '🥦' : r.track === 'meat' ? '🍖' : '🤝')}
+          ${r.photo ? `<img src="${r.photo}" style="width:100%;height:100%;object-fit:cover;" onerror="if(this.src.endsWith('.png')){this.src=this.src.replace('.png','.jpg')}else{this.parentElement.textContent=r.track==='plant'?'🥦':r.track==='meat'?'🍖':'🤝'}">` : (r.track === 'plant' ? '🥦' : r.track === 'meat' ? '🍖' : '🤝')}
         </div>
         <div>
           <div style="font-family:Syne,sans-serif;font-weight:700;font-size:15px;">${r.name}</div>
@@ -1605,87 +1564,142 @@ document.addEventListener('DOMContentLoaded', () => {
   renderRecipes();
   renderVote();
   checkFridayNotification();
-  syncFromCloud();
+  syncAll();
 });
 
 function showSecretSettings() {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay open';
   modal.id = 'settings-modal-dynamic';
-  const recipeCount = appData.recipes.length;
-  const hasKey = !!getApiKey();
-  const cfg = getCloudCfg();
-  const cloudOk = isCloudConfigured();
+  const ghCfg    = getGhCfg();
+  const ghOk     = isGhConfigured();
+  const cloudOk  = isCloudConfigured();
+  const hasKey   = !!getApiKey();
+
   modal.innerHTML = `<div class="modal">
     <div class="modal-handle"></div>
     <h2 class="modal-title">⚙️ Settings</h2>
 
-    <!-- CLOUD SYNC -->
-    <div style="background:${cloudOk ? 'var(--green-pale)' : 'var(--amber-pale)'};border-radius:12px;padding:14px;margin-bottom:16px;">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:${cloudOk ? 'var(--green)' : 'var(--amber)'};margin-bottom:6px;">
-        ${cloudOk ? '☁️ Cloud Sync — Active ✅' : '☁️ Cloud Sync — Not Set Up'}
+    <!-- GITHUB RECIPES -->
+    <div style="background:${ghOk ? 'var(--green-pale)' : 'var(--amber-pale)'};border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:${ghOk ? 'var(--green)' : 'var(--amber)'};margin-bottom:6px;">
+        ${ghOk ? '📂 GitHub Recipes — Connected ✅' : '📂 GitHub Recipes — Not Set Up'}
       </div>
-      ${cloudOk ? `
+      ${ghOk ? `
       <div style="font-size:12px;color:var(--mid);margin-bottom:10px;line-height:1.5;">
-        All family members auto-sync recipes, votes and reviews. Data is safe between app updates.
+        Reading from <strong>${ghCfg.owner}/${ghCfg.repo}</strong><br>
+        Add recipe JSON files to <code style="background:#fff;padding:1px 5px;border-radius:4px;">plant_based_recipes/</code> or <code style="background:#fff;padding:1px 5px;border-radius:4px;">meat_recipes/</code> in your repo — the app picks them up automatically.
       </div>
-      <button class="btn btn-primary btn-full btn-sm" onclick="syncFromCloud();document.getElementById('settings-modal-dynamic').remove()">🔄 Sync Now</button>
-      <button class="btn btn-outline btn-full btn-sm" style="margin-top:8px;" onclick="showCloudSetup(true)">🔧 Change Settings</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary btn-full btn-sm" onclick="syncAll();document.getElementById('settings-modal-dynamic').remove()">🔄 Sync Recipes Now</button>
+        <button class="btn btn-outline btn-sm" onclick="showGhSetup(true)">✏️</button>
+      </div>
       ` : `
       <div style="font-size:12px;color:var(--mid);margin-bottom:10px;line-height:1.5;">
-        Takes 2 minutes to set up. After that, all recipes, votes and reviews are automatically shared across every family member's phone — no codes, no manual steps.
+        Connect your GitHub repo so recipes load automatically for everyone. Add or remove recipes by managing files in the repo.
       </div>
-      <button class="btn btn-secondary btn-full btn-sm" onclick="showCloudSetup(false)">☁️ Set Up Cloud Sync →</button>
+      <button class="btn btn-primary btn-full btn-sm" onclick="document.getElementById('settings-modal-dynamic').remove();showGhSetup(false)">📂 Connect GitHub Repo →</button>
       `}
     </div>
 
-    <!-- BACKUP -->
-    <div style="background:var(--light);border-radius:12px;padding:14px;margin-bottom:16px;">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:var(--mid);margin-bottom:6px;">💾 Manual Backup — ${recipeCount} recipe${recipeCount!==1?'s':''}</div>
+    <!-- JSONBIN: VOTES + REVIEWS -->
+    <div style="background:${cloudOk ? 'var(--green-pale)' : 'var(--light)'};border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:${cloudOk ? 'var(--green)' : 'var(--mid)'};margin-bottom:6px;">
+        🗳️ Votes & Reviews Sync — ${cloudOk ? 'Active ✅' : 'Not Set Up'}
+      </div>
       <div style="font-size:12px;color:var(--mid);margin-bottom:10px;line-height:1.5;">
-        Keep a local backup file as extra insurance before updating the app.
+        ${cloudOk ? 'Votes and reviews are shared across all family devices via JSONBin.' : 'Set up JSONBin so all votes and reviews are shared across the family.'}
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-outline btn-full btn-sm" onclick="exportRecipes()">📤 Export</button>
-        <button class="btn btn-outline btn-full btn-sm" onclick="document.getElementById('import-file-input').click()">📥 Import</button>
-        <input type="file" id="import-file-input" accept=".json" style="display:none" onchange="importRecipesFromFile(event)">
-      </div>
+      <button class="btn btn-outline btn-full btn-sm" onclick="document.getElementById('settings-modal-dynamic').remove();showCloudSetup(${cloudOk})">${cloudOk ? '🔧 Change JSONBin Settings' : '☁️ Set Up JSONBin →'}</button>
     </div>
 
-    <!-- API KEY -->
-    <div class="form-group">
-      <label class="form-label">🔑 AI Scan API Key ${hasKey ? '<span style="color:var(--green);">✅</span>' : '<span style="color:#aaa;">(not set)</span>'}</label>
-      <div style="font-size:12px;color:var(--mid);margin-bottom:8px;">Required for ingredient photo scanning. Free at console.anthropic.com</div>
-      <input class="form-input" id="settings-api-key" type="password" placeholder="sk-ant-api03-..." value="${getApiKey()}" autocomplete="off">
-      <button class="btn btn-primary btn-sm" style="margin-top:8px;width:100%;" onclick="saveApiKey(document.getElementById('settings-api-key').value);showToast('API key saved! ✅');">Save API Key</button>
+    <!-- AI SCAN KEY -->
+    <div style="background:var(--light);border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:var(--mid);margin-bottom:6px;">
+        🔑 AI Ingredient Scan ${hasKey ? '<span style="color:var(--green);">✅</span>' : ''}
+      </div>
+      <input class="form-input" id="settings-api-key" type="password" placeholder="sk-ant-api03-..." value="${getApiKey()}" autocomplete="off" style="margin-bottom:8px;">
+      <button class="btn btn-primary btn-sm" style="width:100%;" onclick="saveApiKey(document.getElementById('settings-api-key').value);showToast('API key saved ✅');">Save Key</button>
     </div>
 
-    <!-- DAD PHOTO -->
-    <div class="form-group">
-      <label class="form-label">😄 Dad's Joke Photo</label>
-      <div class="upload-area" onclick="document.getElementById('dad-photo-input').click()">
-        <input type="file" id="dad-photo-input" accept="image/*" onchange="uploadDadPhoto(this)">
-        <div class="upload-icon">👨</div>
-        <div class="upload-text">${appData.dadJokePhoto ? '✅ Photo set! Tap to change' : 'Tap to upload Dad\'s photo'}</div>
+    <!-- DAD JOKE PHOTO -->
+    <div style="background:var(--light);border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:var(--mid);margin-bottom:8px;">📸 Dad's Review Photo</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('dad-photo-upload-settings').click()">📷 Upload Photo</button>
+        <input type="file" id="dad-photo-upload-settings" accept="image/*" style="display:none" onchange="uploadDadPhoto(this)">
+        <button class="btn btn-outline btn-sm" onclick="showDadJoke()">🎉 Test Dad Joke</button>
+        <button class="btn btn-outline btn-sm" onclick="appData.votes={};appData.votesSubmitted=[];saveData();showToast('Votes reset!');">🔄 Reset Votes</button>
       </div>
     </div>
 
-    <div class="form-group">
-      <label class="form-label">Preview Dad Joke</label>
-      <button class="btn btn-secondary btn-full" onclick="showDadJoke()">Test Dad Joke 🎉</button>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">Danger Zone</label>
-      <button class="btn btn-danger btn-full btn-sm" onclick="if(confirm('Reset all votes?')){appData.votes={};appData.votesSubmitted=[];saveData();showToast('Votes reset!');}">Reset All Votes</button>
-    </div>
-
-    <button class="btn btn-outline btn-full mt-16" onclick="this.closest('.modal-overlay').remove()">Close</button>
+    <button class="btn btn-outline btn-full" onclick="document.getElementById('settings-modal-dynamic').remove()">Close</button>
   </div>`;
   document.body.appendChild(modal);
 }
 
-// ─── CLOUD SETUP MODAL ────────────────────────────────────────────────────────
+
+function showGhSetup(isEdit) {
+  document.getElementById('gh-setup-modal')?.remove();
+  const cfg = getGhCfg();
+  const modal = document.createElement('div');
+  modal.id = 'gh-setup-modal';
+  modal.className = 'modal-overlay open';
+  modal.innerHTML = `<div class="modal">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title">📂 Connect GitHub Repo</h2>
+    <div style="background:var(--green-pale);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.9;">
+      <strong>One-time setup:</strong><br>
+      1. Make sure your GitHub repo is <strong>public</strong><br>
+      2. Create two folders in the repo:<br>
+         &nbsp;&nbsp;• <code style="background:#fff;padding:1px 5px;border-radius:4px;">plant_based_recipes/</code><br>
+         &nbsp;&nbsp;• <code style="background:#fff;padding:1px 5px;border-radius:4px;">meat_recipes/</code><br>
+      3. Use the <strong>Recipe Converter tool</strong> to generate JSON files<br>
+      4. Commit the JSON files to the right folder<br>
+      5. Enter your GitHub username and repo name below
+    </div>
+    <div class="form-group">
+      <label class="form-label">GitHub Username</label>
+      <input class="form-input" id="gh-owner" placeholder="e.g. johnsmith" value="${cfg.owner || ''}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Repository Name</label>
+      <input class="form-input" id="gh-repo" placeholder="e.g. family-recipes" value="${cfg.repo || ''}">
+    </div>
+    <div id="gh-test-result" style="min-height:20px;margin-bottom:10px;font-size:13px;"></div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="btn btn-primary btn-full" onclick="testAndSaveGh()">✅ Connect & Load Recipes</button>
+      ${isEdit ? '<button class="btn btn-outline btn-full btn-sm" onclick="saveGhCfg({});showToast(\'GitHub disconnected\');document.getElementById(\'gh-setup-modal\').remove();">Disconnect</button>' : ''}
+      <button class="btn btn-outline btn-full" onclick="document.getElementById('gh-setup-modal').remove()">Cancel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+async function testAndSaveGh() {
+  const owner = document.getElementById('gh-owner')?.value.trim();
+  const repo  = document.getElementById('gh-repo')?.value.trim();
+  const result = document.getElementById('gh-test-result');
+  if (!owner || !repo) { result.innerHTML = '<span style="color:var(--red);">Please fill in both fields</span>'; return; }
+  result.innerHTML = '<span style="color:var(--amber);">🔄 Connecting…</span>';
+  saveGhCfg({ owner, repo });
+
+  const recipes = await fetchGithubRecipes();
+  if (recipes.length === 0) {
+    result.innerHTML = `<span style="color:var(--amber);">⚠️ Connected but no recipes found yet. Make sure your repo is public and has JSON files in <code>plant_based_recipes/</code> or <code>meat_recipes/</code>.</span>`;
+  } else {
+    appData.recipes = recipes;
+    saveLocal();
+    renderRecipes(); renderVote();
+    result.innerHTML = `<span style="color:var(--green);">✅ Loaded ${recipes.length} recipe${recipes.length!==1?'s':''}!</span>`;
+  }
+  setTimeout(() => {
+    document.getElementById('gh-setup-modal')?.remove();
+    document.getElementById('settings-modal-dynamic')?.remove();
+    if (recipes.length > 0) showToast(`📂 ${recipes.length} recipes loaded from GitHub!`);
+  }, 1800);
+}
+
 function showCloudSetup(isEdit) {
   document.getElementById('cloud-setup-modal')?.remove();
   const cfg = getCloudCfg();
@@ -1694,20 +1708,18 @@ function showCloudSetup(isEdit) {
   modal.className = 'modal-overlay open';
   modal.innerHTML = `<div class="modal">
     <div class="modal-handle"></div>
-    <h2 class="modal-title">☁️ Cloud Sync Setup</h2>
-
-    <div style="background:var(--green-pale);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.8;">
+    <h2 class="modal-title">🗳️ Votes & Reviews Sync</h2>
+    <div style="background:var(--green-pale);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.9;">
       <strong>One-time setup (2 mins):</strong><br>
-      1. Go to <strong>jsonbin.io</strong> and create a free account<br>
-      2. Click <strong>CREATE BIN</strong>, paste in <code style="background:#fff;padding:1px 5px;border-radius:4px;">{}</code> and save<br>
-      3. Copy the <strong>BIN ID</strong> from the URL (looks like <code style="background:#fff;padding:1px 5px;border-radius:4px;">64abc123...</code>)<br>
-      4. Go to <strong>API Keys</strong> in your account → copy your <strong>Master Key</strong><br>
-      5. Paste both below — do this once on one device, then copy the same details to all family phones
+      1. Go to <strong>jsonbin.io</strong> → create a free account<br>
+      2. Click <strong>CREATE BIN</strong>, paste in:<br>
+      <code style="background:#fff;padding:3px 8px;border-radius:4px;font-size:11px;display:block;margin:4px 0;word-break:break-all;">{"votes":{},"votesSubmitted":[],"reviews":[],"weekPlan":{}}</code>
+      3. Copy the <strong>Bin ID</strong> from the URL<br>
+      4. Go to <strong>API Keys</strong> → copy your <strong>Master Key</strong>
     </div>
-
     <div class="form-group">
       <label class="form-label">JSONBin Bin ID</label>
-      <input class="form-input" id="cloud-bin-id" placeholder="64abc123def456..." value="${cfg.binId || ''}">
+      <input class="form-input" id="cloud-bin-id" placeholder="64abc123..." value="${cfg.binId || ''}">
     </div>
     <div class="form-group">
       <label class="form-label">JSONBin Master Key</label>
@@ -1715,13 +1727,14 @@ function showCloudSetup(isEdit) {
     </div>
     <div id="cloud-test-result" style="min-height:20px;margin-bottom:10px;font-size:13px;"></div>
     <div style="display:flex;flex-direction:column;gap:8px;">
-      <button class="btn btn-primary btn-full" onclick="testAndSaveCloud()">✅ Save & Test Connection</button>
-      ${isEdit ? '<button class="btn btn-danger btn-full btn-sm" onclick="if(confirm(\'Remove cloud sync?\'){saveCloudCfg({});showToast(\'Cloud sync removed\');document.getElementById(\'cloud-setup-modal\').remove();document.getElementById(\'settings-modal-dynamic\')?.remove();}">Remove Cloud Sync</button>' : ''}
+      <button class="btn btn-primary btn-full" onclick="testAndSaveCloud()">✅ Save & Test</button>
+      ${isEdit ? '<button class="btn btn-outline btn-full btn-sm" onclick="saveCloudCfg({});showToast(\'JSONBin disconnected\');document.getElementById(\'cloud-setup-modal\').remove();">Disconnect</button>' : ''}
       <button class="btn btn-outline btn-full" onclick="document.getElementById('cloud-setup-modal').remove()">Cancel</button>
     </div>
   </div>`;
   document.body.appendChild(modal);
 }
+
 
 async function testAndSaveCloud() {
   const binId  = document.getElementById('cloud-bin-id')?.value.trim();
@@ -1731,95 +1744,32 @@ async function testAndSaveCloud() {
   result.innerHTML = '<span style="color:var(--amber);">🔄 Testing connection…</span>';
   saveCloudCfg({ binId, apiKey });
 
-  // Try reading from the bin
-  const data = await cloudRead();
+  const data = await binRead();
   if (data === null) {
-    // Bin might be empty — try writing first
-    const writeOk = await cloudWrite(appData);
-    if (!writeOk) {
+    // Bin might be new — try writing current votes/reviews
+    const ok = await binWrite();
+    if (!ok) {
       result.innerHTML = '<span style="color:var(--red);">⚠️ Could not connect. Check your Bin ID and Master Key.</span>';
       saveCloudCfg({});
       return;
     }
-    result.innerHTML = '<span style="color:var(--green);">✅ Connected! Your recipes are now in the cloud.</span>';
+    result.innerHTML = '<span style="color:var(--green);">✅ Connected! Votes and reviews will now sync across all devices.</span>';
   } else {
-    // Merge any existing cloud data
-    if ((data.recipes||[]).length > 0) {
-      const incoming = (data.recipes||[]).map(r => ({...r, photo: isUrlPhoto(r.photo) ? r.photo : (r.photo === '__has_photo__' ? null : r.photo)}));
-      mergeImportedRecipes(incoming);
-    }
+    // Merge any existing remote votes/reviews
+    appData.votes          = data.votes          || appData.votes;
+    appData.votesSubmitted = data.votesSubmitted || appData.votesSubmitted;
+    appData.reviews        = data.reviews        || appData.reviews;
+    appData.weekPlan       = data.weekPlan       || appData.weekPlan;
+    saveLocal();
     result.innerHTML = '<span style="color:var(--green);">✅ Connected & synced!</span>';
   }
   showSyncStatus('ok');
   setTimeout(() => {
     document.getElementById('cloud-setup-modal')?.remove();
     document.getElementById('settings-modal-dynamic')?.remove();
-    showToast('☁️ Cloud sync is live — all devices will auto-sync!');
+    showToast('🗳️ Votes & reviews sync is live!');
   }, 1500);
 }
-
-// ─── EXPORT ───────────────────────────────────────────────────────────────────
-function exportRecipes() {
-  const exportData = {
-    version: 2,
-    exportedAt: new Date().toISOString(),
-    exportedFrom: 'FamilyEats',
-    recipes: appData.recipes,
-    votes: appData.votes
-  };
-  const json = JSON.stringify(exportData, null, 2);
-  const blob = new Blob([json], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const date = new Date().toISOString().slice(0,10);
-  a.href = url;
-  a.download = `familyeats-recipes-${date}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast(`✅ Exported ${appData.recipes.length} recipes!`);
-}
-
-// ─── IMPORT ───────────────────────────────────────────────────────────────────
-function importRecipesFromFile(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    try {
-      const data = JSON.parse(ev.target.result);
-      const incoming = data.recipes || (Array.isArray(data) ? data : []);
-      if (!incoming.length) { showToast('No recipes found in file'); return; }
-      mergeImportedRecipes(incoming);
-    } catch(e) {
-      showToast('⚠️ Could not read file — is it a valid FamilyEats export?');
-    }
-  };
-  reader.readAsText(file);
-  event.target.value = '';
-}
-
-function mergeImportedRecipes(incoming) {
-  let added = 0, skipped = 0;
-  incoming.forEach(rec => {
-    const exists = appData.recipes.some(r =>
-      r.id === rec.id || r.name.toLowerCase() === rec.name.toLowerCase()
-    );
-    if (!exists) {
-      // Ensure required fields
-      if (!rec.id) rec.id = Date.now().toString() + Math.random().toString(36).slice(2);
-      appData.recipes.push(rec);
-      added++;
-    } else { skipped++; }
-  });
-  saveData();
-  renderRecipes();
-  document.getElementById('settings-modal-dynamic')?.remove();
-  showToast(`✅ Added ${added} recipe${added!==1?'s':''}${skipped ? `, skipped ${skipped} duplicate${skipped!==1?'s':''}` : ''}!`);
-}
-
-// ─── SHARE CODE ───────────────────────────────────────────────────────────────
-
-
 
 // ─── FRIDAY NOTIFICATION CHECK ───────────────────────────────────────────────
 function checkFridayNotification() {
