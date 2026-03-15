@@ -1,0 +1,32 @@
+{
+  "id": "sausage_pasta_bake",
+  "name": "Sausage pasta bake",
+  "track": "meat",
+  "serves": "4",
+  "difficulty": "Easy",
+  "description": "A comforting pasta bake with sausages rolled into balls, tomato sauce and a crispy cheesy breadcrumb topping.",
+  "ingredients": [
+    "4 higher-welfare sausages",
+    "2 cloves of garlic",
+    "50g mature Cheddar cheese",
+    "2 slices of stale bread",
+    "1 small bunch of fresh oregano (15g)",
+    "olive oil",
+    "1 pinch of dried chilli flakes",
+    "1 x 400g tin of plum tomatoes",
+    "320g dried pasta, such as penne",
+    "sea salt",
+    "black pepper"
+  ],
+  "method": [
+    "Preheat the oven to 200°C/400°F/gas 6. Peel and finely slice the garlic. Coarsely grate the Cheddar. Tear the stale bread into small chunks or blitz in the food processor.",
+    "Tip the breadcrumbs into a bowl with one of the sliced garlic cloves, a good pinch of the oregano, the grated cheese and a pinch of sea salt and a sprinkling of black pepper. Drizzle with a little oil and toss to mix it all together.",
+    "Pop the sausages out of their skins and break each one into 4 equal pieces. Roll each piece into a ball shape and place in an ovenproof dish. Drizzle over a little oil and roll to coat. Bake in the oven for about 10 minutes, or until golden and cooked through.",
+    "Heat a little oil in a frying pan over a medium heat. Add the remaining sliced garlic and oregano, and the chilli flakes. Stir until the garlic is coloured, then tip in the tomatoes. Add a pinch of salt and pepper, bring to the boil, then reduce the heat and simmer for 10 minutes, stirring occasionally.",
+    "Meanwhile, cook the pasta in a large pan of boiling salted water according to the packet instructions, until al dente. Drain well.",
+    "Add the sausage balls, pour over the sauce and toss well. Sprinkle over the cheesy crumb mix and bake for 15 minutes, or until golden on top and bubbling."
+  ],
+  "photo": null,
+  "source_url": "https://www.jamieoliver.com/recipes/pasta/sausage-pasta-bake/",
+  "addedAt": "2026-03-14"
+}

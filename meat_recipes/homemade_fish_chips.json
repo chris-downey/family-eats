@@ -1,0 +1,42 @@
+{
+  "id": "homemade_fish_chips",
+  "name": "Homemade fish & chips",
+  "track": "meat",
+  "serves": "4",
+  "difficulty": "Easy",
+  "description": "Proper old-school battered fish, chunky chips and comforting mushy peas - homemade heaven! A traditional British dish with crispy beer batter, fluffy chips and mint-flavoured mushy peas.",
+  "ingredients": [
+    "900g potatoes",
+    "225g plain flour, plus extra for dusting",
+    "285ml cold beer",
+    "3 heaped teaspoons baking powder",
+    "225g white fish fillets, skin off, pin-boned, from sustainable sources",
+    "Sunflower oil, for deep-frying",
+    "A few sprigs of fresh mint",
+    "1 knob of unsalted butter",
+    "4 handfuls of podded peas",
+    "1/2 a lemon",
+    "Sea salt",
+    "Black pepper"
+  ],
+  "method": [
+    "Preheat the oven to 180°C/350°F/gas 4.",
+    "Peel and slice the potatoes into chips.",
+    "To make the mushy peas, pick and finely chop the mint leaves.",
+    "Place the butter in a pan over a medium-low heat, add the peas and mint, pop the lid on and simmer gently for 10 minutes.",
+    "Add a squeeze of lemon juice and season to taste with sea salt and black pepper - you can either mush the peas up in a food processor, or mash them by hand until stodgy, thick and perfect for dipping your fish into. Keep them warm until needed.",
+    "Heat the sunflower oil in a deep fryer or a large pan to 190°C/375°F.",
+    "Meanwhile, parboil the chips in boiling salted water for 4 to 5 minutes, or until softened but still retaining their shape, then drain and steam dry.",
+    "For the batter, mix the flour and baking powder in a bowl with a pinch of salt, then gradually whisk in the beer until you have a smooth batter.",
+    "Dust each fish fillet with some extra flour, then dip into the batter and let any excess drip off.",
+    "Carefully lower the fish into the oil one by one - don't overcrowd the fryer or pan.",
+    "Cook for 4 minutes, or until the fish is cooked through and the batter is golden and crisp, then remove to kitchen paper to drain.",
+    "When the chips are nice and dry, fry in the oil that the fish were cooked in at 180°C/350°F until golden and crisp.",
+    "While the chips are frying, transfer the fish from the kitchen paper to a baking tray. Place in the oven for a few minutes to finish cooking - this way they will stay crisp while you finish off the chips.",
+    "When the chips are done, drain them on kitchen paper, season with salt, and serve with the fish and mushy peas.",
+    "Serve with crunchy sweet pickled gherkins, pickled onions, pickled chillies, cheap malt vinegar and Heinz tomato ketchup."
+  ],
+  "photo": null,
+  "source_url": "https://www.jamieoliver.com/recipes/fish/fish-chips-and-mushy-peas/",
+  "addedAt": "2026-03-14"
+}

@@ -1,0 +1,38 @@
+{
+  "id": "jamie_oliver_chicken_burgers",
+  "name": "Jamie Oliver Chicken Burgers",
+  "track": "meat",
+  "serves": "4",
+  "difficulty": "Easy",
+  "description": "A fresh, healthy alternative to traditional beef burgers made with seasoned minced chicken, herbs and spices for a juicy, flavorful patty.",
+  "ingredients": [
+    "500g minced chicken",
+    "50g breadcrumbs",
+    "1 egg, beaten",
+    "2 cloves garlic, minced",
+    "2 tbsp fresh parsley, chopped",
+    "1 tsp paprika",
+    "Salt and black pepper to taste",
+    "Olive oil for cooking",
+    "4 burger buns",
+    "Lettuce leaves",
+    "1 large tomato, sliced",
+    "1 small red onion, thinly sliced",
+    "Mayonnaise for serving"
+  ],
+  "method": [
+    "In a large mixing bowl, combine the minced chicken, breadcrumbs, beaten egg, minced garlic, chopped parsley, paprika, salt, and black pepper. Mix well until everything is evenly combined.",
+    "Divide the mixture into four equal portions and shape each into a round patty, slightly larger than the burger bun (as they shrink while cooking).",
+    "Heat a drizzle of olive oil in a non-stick frying pan over medium heat.",
+    "Cook the chicken patties for about 4-5 minutes on each side, or until golden brown and cooked through. The internal temperature should reach 75°C (165°F).",
+    "Toast the burger buns lightly.",
+    "Spread a layer of mayonnaise on the bottom half of each bun.",
+    "Place a lettuce leaf, followed by the cooked chicken patty.",
+    "Add tomato slices, red onion, and any additional condiments like mustard or ketchup.",
+    "Top with the other half of the bun.",
+    "Serve immediately with a side of fries, coleslaw, or a simple salad."
+  ],
+  "photo": null,
+  "source_url": "https://britishbakingrecipes.co.uk/chicken-burger/",
+  "addedAt": "2026-03-14"
+}

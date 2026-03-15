@@ -1,0 +1,32 @@
+{
+  "id": "smash_burger",
+  "name": "Smash Burger",
+  "track": "meat",
+  "serves": "1",
+  "difficulty": "Easy",
+  "description": "An ultra thin smash burger with crispy edges, topped with fried onions and your choice of ketchup and mustard. A fast filthy fix ready in just 12 minutes.",
+  "ingredients": [
+    "120g quality minced beef",
+    "1 onion",
+    "1 tablespoon olive oil",
+    "Black pepper",
+    "Cajun seasoning",
+    "1 burger bun",
+    "Ketchup",
+    "Mustard",
+    "2-3 gherkins",
+    "1 tomato",
+    "Handful of salad leaves"
+  ],
+  "method": [
+    "Peel the onion, very finely slice into rounds, then break into rings and cook in a large non-stick frying pan with 1 tablespoon of olive oil for a few minutes, stirring regularly, then push to one side of the pan.",
+    "Squash the minced meat into a rough patty about ½cm thick and a bit bigger than your bun and place in the pan.",
+    "Season with black pepper and the Cajun seasoning, then move the onion rings on top and use a fish slice to really smash the onions into the meat.",
+    "Cook for 2 minutes on each side, or until gnarly and cooked through, toasting the halved bun alongside for a minute.",
+    "Spread the bun base with ketchup, sit the burger on top, slice and layer over 1 gherkin, squeeze over mustard to your liking, and pop the lid on.",
+    "Slice the tomato and remaining gherkin to serve on the side with the salad leaves, or stuff it all into your bun, the choice is yours."
+  ],
+  "photo": null,
+  "source_url": "https://www.jamieoliver.com/recipes/beef/smash-burger",
+  "addedAt": "2026-03-14"
+}

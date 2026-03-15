@@ -1,0 +1,25 @@
+{
+  "id": "cheese_quesadillas",
+  "name": "Cheese Quesadillas",
+  "track": "meat",
+  "serves": "2 to 4",
+  "difficulty": "Easy",
+  "description": "A golden brown, crispy flour tortilla filled with deliciously gooey melted cheese. This simple recipe is perfect for a quick lunch or dinner.",
+  "ingredients": [
+    "2 tablespoons butter or olive oil",
+    "2 large flour tortillas",
+    "1 cup shredded cheddar cheese"
+  ],
+  "method": [
+    "Heat the butter or olive oil in a large non-stick skillet over medium-high heat.",
+    "Add one tortilla to the pan and scatter the cheddar cheese in an even layer all over the tortilla.",
+    "Place the second tortilla on top of the cheese.",
+    "Cook for 2-3 minutes or until the bottom of the tortilla starts to become golden brown.",
+    "Carefully flip the tortilla and cook on the other side for 2-3 minutes or until the bottom of the tortilla becomes golden brown.",
+    "Remove from heat and let cool for a few minutes to allow the cheese to set before cutting.",
+    "Cut into triangles and serve immediately."
+  ],
+  "photo": null,
+  "source_url": "https://www.feelgoodfoodie.net/recipe/cheese-quesadilla/",
+  "addedAt": "2026-03-14"
+}

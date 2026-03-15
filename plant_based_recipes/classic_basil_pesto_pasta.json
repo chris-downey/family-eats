@@ -1,0 +1,31 @@
+{
+  "id": "classic_basil_pesto_pasta",
+  "name": "Classic Basil Pesto Pasta",
+  "track": "plant",
+  "serves": "4",
+  "difficulty": "Easy",
+  "description": "A quick dinner of your favourite pasta smothered in fresh basil pesto. Ready in 15 minutes including making your own homemade pesto.",
+  "ingredients": [
+    "400g dried spaghetti",
+    "50g fresh basil leaves",
+    "2 cloves garlic",
+    "40g pine nuts",
+    "30g freshly grated Parmesan cheese, plus extra to serve",
+    "80ml extra virgin olive oil",
+    "1/4 tsp freshly ground black pepper",
+    "1/2 tsp Maldon salt",
+    "2 tbsp toasted pine nuts for garnish",
+    "Fresh baby basil leaves for garnish"
+  ],
+  "method": [
+    "Add the dried spaghetti to a large pan of salted boiling water and cook for 10-13 minutes until al dente. Reserve 1/2 cup of pasta cooking water before draining.",
+    "While the pasta is cooking, make the pesto. Add the fresh basil leaves, garlic, pine nuts, freshly grated Parmesan cheese, black pepper, and Maldon salt to a food processor and pulse for about 10 seconds to break up the garlic and pine nuts.",
+    "Turn the food processor back on and pour in the olive oil in a steady stream - this should take about 10 seconds. Check for consistency - if you like it a little chunky, it's ready to go.",
+    "Place the drained spaghetti back into the pan you cooked it in. Add in the pesto and a good splash (about 1/3 of a cup) of the pasta cooking water.",
+    "Toss the spaghetti in the sauce using a set of tongs over a low heat until the sauce coats the pasta. Add more pasta water if you want to loosen up the sauce more.",
+    "Divide the pasta between bowls and top with a sprinkling of black pepper, grated parmesan, toasted pine nuts, and some fresh baby basil leaves."
+  ],
+  "photo": null,
+  "source_url": "https://www.kitchensanctuary.com/pesto-pasta-recipe/",
+  "addedAt": "2026-03-14"
+}
