@@ -1010,6 +1010,50 @@ function clearChecked() {
 // ─── RECIPES ──────────────────────────────────────────────────────────────────
 function openAddRecipe() { showToast("Recipes are managed via GitHub files."); }
 
+function switchRecipeTab(tab, btn) {
+  currentRecipeTab = tab;
+  document.querySelectorAll('#page-recipes .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRecipes();
+}
+
+function renderRecipes() {
+  const grid = document.getElementById('recipe-grid');
+  if (!grid) return;
+  const tab = currentRecipeTab || 'plant';
+  let recipes;
+  if (tab === 'shared') {
+    recipes = appData.recipes.filter(r => r.track === 'shared');
+  } else if (tab === 'plant') {
+    recipes = appData.recipes.filter(r => r.track === 'plant' || r.track === 'shared');
+  } else {
+    recipes = appData.recipes.filter(r => r.track === 'meat' || r.track === 'shared');
+  }
+
+  if (!recipes.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+      <div class="empty-icon">📭</div>
+      <div class="empty-text">No recipes yet.<br>Add recipe JSON files to your repo and sync.</div>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = recipes.map(r => {
+    const stars = r.avgRating > 0 ? '⭐'.repeat(Math.round(r.avgRating)) : '';
+    return `<div class="recipe-thumb" onclick="openRecipeDetail('${r.id}')">
+      <div class="recipe-thumb-img">
+        ${r.photo
+          ? `<img src="${r.photo}" onerror="if(this.src.endsWith('.png')){this.src=this.src.replace('.png','.jpg')}else{this.style.display='none'}">`
+          : (r.track === 'plant' ? '🥦' : r.track === 'meat' ? '🍖' : '🤝')}
+      </div>
+      <div class="recipe-thumb-body">
+        <div class="recipe-thumb-name">${r.name}</div>
+        ${stars ? `<div class="recipe-stars">${stars}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
 async function handlePhotoUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
