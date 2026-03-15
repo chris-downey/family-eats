@@ -9,28 +9,30 @@
 <meta name="theme-color" content="#2d6a4f">
 <title>FamilyEats 🥦🍖</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,700;0,9..144,900;1,9..144,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --green: #2d6a4f;
-    --green-light: #52b788;
-    --green-pale: #d8f3dc;
-    --amber: #e07a25;
-    --amber-light: #f4a261;
-    --amber-pale: #fdecd0;
-    --red: #c1121f;
-    --cream: #fefae0;
-    --dark: #1b1b1b;
-    --mid: #555;
-    --light: #f0f0eb;
+    --green: #1a5c3a;
+    --green-light: #4aab76;
+    --green-pale: #e8f5ee;
+    --amber: #c85b1a;
+    --amber-light: #e8884f;
+    --amber-pale: #fdf0e6;
+    --red: #b91c1c;
+    --cream: #faf8f2;
+    --dark: #141414;
+    --mid: #6b7280;
+    --light: #f3f2ed;
     --white: #ffffff;
-    --radius: 16px;
-    --shadow: 0 4px 24px rgba(0,0,0,0.10);
-    --shadow-lg: 0 8px 40px rgba(0,0,0,0.15);
+    --radius: 18px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.07);
+    --shadow-md: 0 4px 20px rgba(0,0,0,0.10);
+    --shadow-lg: 0 8px 40px rgba(0,0,0,0.14);
+    --border: 1px solid rgba(0,0,0,0.07);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     background: var(--light);
     color: var(--dark);
     min-height: 100vh;
@@ -39,21 +41,22 @@
     position: relative;
     overflow-x: hidden;
   }
-  h1,h2,h3,h4 { font-family: 'Syne', sans-serif; }
+  h1,h2,h3,h4 { font-family: 'Fraunces', serif; }
 
   /* NAV */
   .bottom-nav {
     position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; max-width: 480px;
-    background: var(--white);
-    display: flex; border-top: 1px solid #e0e0d8;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    display: flex; border-top: var(--border);
     z-index: 100;
     padding-bottom: env(safe-area-inset-bottom);
   }
   .nav-btn {
     flex: 1; display: flex; flex-direction: column; align-items: center;
     padding: 10px 4px 8px; background: none; border: none; cursor: pointer;
-    font-family: 'DM Sans', sans-serif; font-size: 10px; color: var(--mid);
+    font-family: 'Plus Jakarta Sans', sans-serif; font-size: 10px; font-weight: 600; color: var(--mid);
     transition: color 0.2s;
     gap: 3px;
   }
@@ -67,12 +70,12 @@
   /* HEADER */
   .page-header {
     display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: 22px;
   }
-  .page-title { font-size: 26px; font-weight: 800; }
+  .page-title { font-size: 28px; font-weight: 900; font-style: italic; letter-spacing: -0.5px; }
   .badge {
-    display: inline-block; padding: 4px 10px; border-radius: 20px;
-    font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+    display: inline-block; padding: 4px 12px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.3px;
   }
   .badge-green { background: var(--green-pale); color: var(--green); }
   .badge-amber { background: var(--amber-pale); color: var(--amber); }
@@ -80,9 +83,10 @@
   /* CARDS */
   .card {
     background: var(--white); border-radius: var(--radius);
-    box-shadow: var(--shadow); margin-bottom: 14px; overflow: hidden;
+    box-shadow: var(--shadow); border: var(--border);
+    margin-bottom: 14px; overflow: hidden;
   }
-  .card-body { padding: 16px; }
+  .card-body { padding: 18px; }
   .card-img {
     width: 100%; height: 160px; object-fit: cover; background: var(--green-pale);
     display: flex; align-items: center; justify-content: center;
@@ -92,62 +96,68 @@
 
   /* BUTTONS */
   .btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 12px 20px; border-radius: 12px; border: none;
-    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px;
-    cursor: pointer; transition: all 0.15s; text-decoration: none;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 12px 22px; border-radius: 100px; border: none;
+    font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 14px;
+    cursor: pointer; transition: all 0.18s; text-decoration: none;
+    letter-spacing: -0.1px;
   }
-  .btn-primary { background: var(--green); color: var(--white); }
-  .btn-primary:hover { background: #1e5038; }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--green); color: var(--white); box-shadow: 0 2px 8px rgba(26,92,58,0.25); }
+  .btn-primary:hover { background: #145230; }
   .btn-secondary { background: var(--amber); color: var(--white); }
   .btn-outline { background: transparent; border: 2px solid var(--green); color: var(--green); }
-  .btn-sm { padding: 7px 14px; font-size: 12px; border-radius: 8px; }
+  .btn-outline:hover { background: var(--green-pale); }
+  .btn-sm { padding: 7px 16px; font-size: 12px; }
   .btn-full { width: 100%; justify-content: center; }
   .btn-danger { background: var(--red); color: var(--white); }
 
   /* WEEK PLAN */
-  .week-grid { display: flex; flex-direction: column; gap: 10px; }
+  .week-grid { display: flex; flex-direction: column; gap: 8px; }
   .day-row {
     background: var(--white); border-radius: var(--radius);
-    box-shadow: var(--shadow); overflow: hidden;
+    box-shadow: var(--shadow); border: var(--border); overflow: hidden;
+    cursor: pointer; transition: box-shadow 0.15s;
   }
+  .day-row:active { box-shadow: var(--shadow-md); }
   .day-header {
-    padding: 10px 14px;
+    padding: 11px 16px;
     display: flex; align-items: center; justify-content: space-between;
   }
-  .day-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; }
-  .day-shared { background: linear-gradient(90deg, var(--green-pale), var(--amber-pale)); }
+  .day-name { font-family: 'Fraunces', serif; font-weight: 700; font-size: 15px; font-style: italic; }
+  .day-shared { background: linear-gradient(105deg, var(--green-pale) 0%, var(--amber-pale) 100%); }
   .day-tracks { display: flex; gap: 0; }
   .day-track {
-    flex: 1; padding: 10px 12px;
-    border-top: 1px solid var(--light);
+    flex: 1; padding: 9px 14px;
+    border-top: var(--border);
     font-size: 12px;
   }
-  .track-label { font-weight: 600; font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 3px; }
+  .track-label { font-weight: 700; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 3px; }
   .track-plant .track-label { color: var(--green); }
   .track-meat .track-label { color: var(--amber); }
-  .track-assigned { font-size: 13px; color: var(--dark); }
-  .track-empty { color: #aaa; font-style: italic; }
-  .track-plant { border-right: 1px solid var(--light); }
-  .day-shared-meal { padding: 10px 12px; border-top: 1px solid var(--light); font-size: 13px; }
+  .track-assigned { font-size: 13px; color: var(--dark); font-weight: 500; }
+  .track-empty { color: #bbb; font-style: italic; }
+  .track-plant { border-right: var(--border); }
+  .day-shared-meal { padding: 9px 14px; border-top: var(--border); font-size: 13px; font-weight: 500; }
 
   /* RECIPE CARDS */
   .recipe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .recipe-thumb {
     background: var(--white); border-radius: var(--radius);
-    box-shadow: var(--shadow); overflow: hidden; cursor: pointer;
-    transition: transform 0.15s;
+    box-shadow: var(--shadow); border: var(--border);
+    overflow: hidden; cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
   }
-  .recipe-thumb:active { transform: scale(0.97); }
+  .recipe-thumb:active { transform: scale(0.97); box-shadow: var(--shadow-md); }
   .recipe-thumb-img {
-    height: 110px; background: var(--green-pale);
+    height: 118px; background: var(--green-pale);
     display: flex; align-items: center; justify-content: center;
     font-size: 36px; position: relative; overflow: hidden;
   }
   .recipe-thumb-img img { width: 100%; height: 100%; object-fit: cover; }
-  .recipe-thumb-body { padding: 10px; }
-  .recipe-thumb-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; line-height: 1.3; }
-  .recipe-stars { color: #f4a261; font-size: 12px; margin-top: 3px; }
+  .recipe-thumb-body { padding: 11px 12px; }
+  .recipe-thumb-name { font-family: 'Fraunces', serif; font-weight: 700; font-size: 13px; line-height: 1.35; }
+  .recipe-stars { color: var(--amber); font-size: 11px; margin-top: 3px; font-weight: 600; }
 
   /* STAR RATING */
   .star-rating { display: flex; gap: 6px; }
@@ -158,83 +168,87 @@
 
   /* VOTE */
   .vote-recipe {
-    background: var(--white); border-radius: var(--radius);
-    box-shadow: var(--shadow); margin-bottom: 10px; padding: 14px;
+    background: var(--white); border-radius: 16px;
+    box-shadow: var(--shadow); border: 1.5px solid transparent;
+    margin-bottom: 10px; padding: 14px;
     display: flex; align-items: center; gap: 12px; cursor: pointer;
-    transition: all 0.15s;
+    transition: all 0.18s;
   }
-  .vote-recipe.voted { background: var(--green-pale); border: 2px solid var(--green); }
+  .vote-recipe:active { transform: scale(0.98); }
+  .vote-recipe.voted { background: var(--green-pale); border-color: var(--green); }
   .vote-recipe-img {
-    width: 56px; height: 56px; border-radius: 10px;
+    width: 54px; height: 54px; border-radius: 12px;
     background: var(--green-pale); display: flex; align-items: center;
     justify-content: center; font-size: 26px; flex-shrink: 0; overflow: hidden;
   }
   .vote-recipe-img img { width: 100%; height: 100%; object-fit: cover; }
-  .vote-recipe-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; }
+  .vote-recipe-name { font-family: 'Fraunces', serif; font-weight: 700; font-size: 14px; }
   .vote-check { margin-left: auto; font-size: 22px; }
 
   /* SHOPPING LIST */
   .shop-item {
     display: flex; align-items: center; gap: 12px;
-    padding: 12px 0; border-bottom: 1px solid var(--light);
+    padding: 11px 0; border-bottom: var(--border);
   }
   .shop-item:last-child { border-bottom: none; }
   .shop-check {
     width: 24px; height: 24px; border: 2px solid var(--green);
-    border-radius: 6px; flex-shrink: 0; cursor: pointer;
+    border-radius: 8px; flex-shrink: 0; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     transition: all 0.15s;
   }
-  .shop-check.checked { background: var(--green); }
-  .shop-check.checked::after { content: '✓'; color: white; font-size: 14px; font-weight: bold; }
-  .shop-item.done .shop-text { text-decoration: line-through; color: #aaa; }
-  .shop-cat { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--mid); padding: 12px 0 4px; }
+  .shop-check.checked { background: var(--green); border-color: var(--green); }
+  .shop-check.checked::after { content: '✓'; color: white; font-size: 13px; font-weight: bold; }
+  .shop-item.done .shop-text { text-decoration: line-through; color: #bbb; }
+  .shop-cat { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--mid); padding: 14px 0 5px; }
 
   /* MODAL */
   .modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
     z-index: 200; display: flex; align-items: flex-end;
     justify-content: center; opacity: 0; pointer-events: none;
-    transition: opacity 0.2s;
+    transition: opacity 0.22s;
   }
   .modal-overlay.open { opacity: 1; pointer-events: all; }
   .modal {
-    background: var(--white); border-radius: 24px 24px 0 0;
-    width: 100%; max-width: 480px; max-height: 92vh;
-    overflow-y: auto; padding: 24px 20px 40px;
-    transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    background: var(--white); border-radius: 28px 28px 0 0;
+    width: 100%; max-width: 480px; max-height: 93vh;
+    overflow-y: auto; padding: 24px 22px 44px;
+    transform: translateY(100%); transition: transform 0.32s cubic-bezier(0.34,1.4,0.64,1);
   }
   .modal-overlay.open .modal { transform: translateY(0); }
-  .modal-handle { width: 40px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto 20px; }
-  .modal-title { font-size: 22px; font-weight: 800; margin-bottom: 16px; }
+  .modal-handle { width: 36px; height: 4px; background: #e0e0e0; border-radius: 2px; margin: 0 auto 22px; }
+  .modal-title { font-size: 22px; font-weight: 900; font-style: italic; margin-bottom: 18px; letter-spacing: -0.3px; }
 
   /* FORM */
   .form-group { margin-bottom: 14px; }
-  .form-label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 6px; color: var(--mid); text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-label { display: block; font-weight: 700; font-size: 11px; margin-bottom: 6px; color: var(--mid); text-transform: uppercase; letter-spacing: 0.7px; }
   .form-input {
-    width: 100%; padding: 12px 14px; border: 2px solid #e0e0d8;
-    border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 15px;
-    outline: none; transition: border-color 0.15s; background: var(--cream);
+    width: 100%; padding: 12px 16px; border: 1.5px solid #e5e3dc;
+    border-radius: 12px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 15px;
+    outline: none; transition: border-color 0.15s, box-shadow 0.15s; background: var(--cream);
   }
-  .form-input:focus { border-color: var(--green); }
+  .form-input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(26,92,58,0.08); }
   textarea.form-input { resize: vertical; min-height: 80px; }
 
   /* TABS */
-  .tabs { display: flex; background: var(--light); border-radius: 12px; padding: 4px; margin-bottom: 16px; gap: 4px; }
+  .tabs { display: flex; background: rgba(0,0,0,0.05); border-radius: 14px; padding: 4px; margin-bottom: 16px; gap: 3px; }
   .tab-btn {
-    flex: 1; padding: 9px; border: none; border-radius: 9px;
-    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px;
-    cursor: pointer; transition: all 0.15s; background: none; color: var(--mid);
+    flex: 1; padding: 9px 6px; border: none; border-radius: 11px;
+    font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 12px;
+    cursor: pointer; transition: all 0.18s; background: none; color: var(--mid);
   }
-  .tab-btn.active { background: var(--white); box-shadow: var(--shadow); color: var(--dark); }
+  .tab-btn.active { background: var(--white); box-shadow: var(--shadow-md); color: var(--dark); }
 
   /* TOAST */
   .toast {
     position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px);
-    background: var(--dark); color: var(--white);
-    padding: 12px 20px; border-radius: 20px; font-size: 14px; font-weight: 500;
+    background: rgba(20,20,20,0.9); color: var(--white);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    padding: 11px 22px; border-radius: 100px; font-size: 13px; font-weight: 600;
     z-index: 999; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
-    white-space: nowrap;
+    white-space: nowrap; letter-spacing: -0.1px;
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
 
@@ -260,7 +274,7 @@
   }
   @keyframes popIn { from { transform: scale(0.5) rotate(-10deg); } to { transform: scale(1) rotate(0); } }
   .dad-joke-title { font-size: 28px; margin-bottom: 6px; }
-  .dad-joke-sub { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; color: #333; margin-bottom: 16px; }
+  .dad-joke-sub { font-family: 'Fraunces', serif; font-weight: 900; font-size: 18px; color: #333; margin-bottom: 16px; }
   .dad-joke-img {
     width: 140px; height: 140px; border-radius: 50%; object-fit: cover;
     margin: 0 auto 16px; display: block;
@@ -268,13 +282,13 @@
     background: #f0f0f0; font-size: 80px; line-height: 140px; text-align: center;
   }
   .dad-joke-text {
-    font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700;
+    font-family: 'Fraunces', serif; font-size: 17px; font-weight: 700;
     color: #333; line-height: 1.5; margin-bottom: 20px;
   }
   .dad-joke-punchline { color: var(--red); font-size: 19px; }
 
   /* SECTION TITLE */
-  .section-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; margin: 18px 0 10px; color: var(--mid); text-transform: uppercase; letter-spacing: 0.5px; }
+  .section-title { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 11px; margin: 18px 0 10px; color: var(--mid); text-transform: uppercase; letter-spacing: 1.2px; }
 
   /* UPLOAD AREA */
   .upload-area {
@@ -289,14 +303,15 @@
 
   /* NOTIFICATION BANNER */
   .notif-banner {
-    background: linear-gradient(90deg, var(--amber), var(--amber-light));
-    color: white; border-radius: var(--radius); padding: 14px 16px;
-    margin-bottom: 14px; display: flex; align-items: center; gap: 12px;
-    cursor: pointer; box-shadow: var(--shadow);
+    background: linear-gradient(105deg, var(--amber) 0%, var(--amber-light) 100%);
+    color: white; border-radius: var(--radius); padding: 16px 18px;
+    margin-bottom: 14px; display: flex; align-items: center; gap: 14px;
+    cursor: pointer; box-shadow: 0 4px 16px rgba(200,91,26,0.25);
   }
-  .notif-icon { font-size: 28px; }
-  .notif-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 15px; }
-  .notif-sub { font-size: 12px; opacity: 0.9; }
+  .notif-banner:active { transform: scale(0.99); }
+  .notif-icon { font-size: 28px; flex-shrink: 0; }
+  .notif-title { font-family: 'Fraunces', serif; font-weight: 700; font-size: 16px; font-style: italic; }
+  .notif-sub { font-size: 12px; opacity: 0.88; font-weight: 500; }
 
   /* PROGRESS BAR */
   .progress-bar { height: 8px; background: #e0e0d8; border-radius: 4px; overflow: hidden; }
@@ -413,7 +428,7 @@
     <h1 class="page-title">🗳️ Vote</h1>
     <span id="vote-count-badge" class="badge badge-green"></span>
   </div>
-  <p style="font-size:14px;color:var(--mid);margin-bottom:14px;" id="vote-intro">Vote for your favourite recipes for next week! Each family member gets 7 votes.</p>
+  <p style="font-size:14px;color:var(--mid);margin-bottom:14px;" id="vote-intro">Vote for your favourite recipes for next week! Each family member gets 7 votes total across both tracks.</p>
   <div id="vote-tabs" class="tabs">
     <button class="tab-btn active" onclick="switchVoteTab('plant', this)">🥦 Plant Based</button>
     <button class="tab-btn" onclick="switchVoteTab('meat', this)">🍖 Meat</button>
@@ -528,7 +543,10 @@
     <h2 class="modal-title">📅 Plan Your Week</h2>
     <p style="font-size:13px;color:var(--mid);margin-bottom:14px;">Monday = all plant based 🥦 | Friday = all meat 🍖 | Tue–Thu, Sat–Sun = two tracks</p>
     <div id="week-setup-form"></div>
-    <button class="btn btn-primary btn-full mt-16" onclick="saveWeekPlan()">Save Week Plan ✅</button>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn btn-outline btn-full" onclick="closeModal('week-setup-modal')">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="saveWeekPlan()">Save Plan ✅</button>
+    </div>
   </div>
 </div>
 
@@ -564,7 +582,7 @@
 
 const DB_KEY        = 'familyEatsData_v4';
 const CLOUD_CFG_KEY = 'familyEats_cloudCfg';  // { binId, apiKey }
-const GH_CFG_KEY    = 'familyEats_ghCfg';     // { owner, repo }
+const NAME_KEY      = 'familyEats_userName';   // user's name for this device
 
 // ── Local cache ───────────────────────────────────────────────────────────────
 function loadData() {
@@ -578,12 +596,9 @@ function saveLocal() {
   localStorage.setItem(DB_KEY, JSON.stringify(appData));
 }
 
-// ── GitHub config ─────────────────────────────────────────────────────────────
-function getGhCfg() {
-  try { return JSON.parse(localStorage.getItem(GH_CFG_KEY)) || {}; } catch(e) { return {}; }
-}
-function saveGhCfg(cfg) { localStorage.setItem(GH_CFG_KEY, JSON.stringify(cfg)); }
-function isGhConfigured() { const c = getGhCfg(); return !!(c.owner && c.repo); }
+// ── User name (stored per device) ────────────────────────────────────────────
+function getUserName() { return localStorage.getItem(NAME_KEY) || ''; }
+function saveUserName(n) { localStorage.setItem(NAME_KEY, n.trim()); }
 
 // ── JSONBin config (votes + reviews only) ────────────────────────────────────
 function getCloudCfg() {
@@ -592,27 +607,18 @@ function getCloudCfg() {
 function saveCloudCfg(cfg) { localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify(cfg)); }
 function isCloudConfigured() { const c = getCloudCfg(); return !!(c.binId && c.apiKey); }
 
-// ── GitHub recipe fetching ────────────────────────────────────────────────────
-// Images live in recipe_images/IMG_<recipe-id>.<ext> in the same repo.
-// We build a raw.githubusercontent.com URL — no API call, no external service.
-function githubRawBase(owner, repo) {
-  return `https://raw.githubusercontent.com/${owner}/${repo}/main`;
-}
+// ── Local recipe fetching (relative paths) ───────────────────────────────────
+// Recipes live in plant_based_recipes/ and meat_recipes/ folders
+// served alongside index.html. Images in recipe_images/IMG_<id>.png
 
-function resolveRecipePhoto(owner, repo, recipeId, jsonPhoto) {
-  // If the JSON already has a full URL, use it
+function resolveRecipePhoto(recipeId, jsonPhoto) {
   if (jsonPhoto && (jsonPhoto.startsWith('http://') || jsonPhoto.startsWith('https://'))) {
     return jsonPhoto;
   }
-  // Otherwise build the raw GitHub URL for recipe_images/IMG_<id>
-  // Try .png first — the <img> tag will fall back gracefully if missing
-  const base = githubRawBase(owner, repo);
-  return `${base}/recipe_images/IMG_${recipeId}.png`;
+  return `recipe_images/IMG_${recipeId}.png`;
 }
 
-async function fetchGithubRecipes() {
-  const { owner, repo } = getGhCfg();
-  if (!owner || !repo) return [];
+async function fetchLocalRecipes() {
   const folders = [
     { path: 'plant_based_recipes', track: 'plant' },
     { path: 'meat_recipes',        track: 'meat'  }
@@ -620,19 +626,16 @@ async function fetchGithubRecipes() {
   const allRecipes = [];
   for (const folder of folders) {
     try {
-      const res = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/contents/${folder.path}`,
-        { headers: { Accept: 'application/vnd.github.v3+json' } }
-      );
-      if (!res.ok) continue;
-      const files = await res.json();
-      for (const file of files.filter(f => f.name.endsWith('.json'))) {
+      // Fetch the folder index — a recipes_index.json listing all filenames
+      const idxRes = await fetch(`${folder.path}/recipes_index.json`);
+      if (!idxRes.ok) continue;
+      const filenames = await idxRes.json(); // array of "filename.json"
+      for (const name of filenames) {
         try {
-          const r = await (await fetch(file.download_url)).json();
+          const r = await (await fetch(`${folder.path}/${name}`)).json();
           r.track = r.track || folder.track;
-          r.id    = r.id    || file.name.replace('.json', '');
-          // Resolve photo from recipe_images folder
-          r.photo = resolveRecipePhoto(owner, repo, r.id, r.photo);
+          r.id    = r.id    || name.replace('.json', '');
+          r.photo = resolveRecipePhoto(r.id, r.photo);
           allRecipes.push(r);
         } catch(e) {}
       }
@@ -684,10 +687,12 @@ async function saveData(pushCloud = true) {
 async function syncAll() {
   showSyncStatus('syncing');
   let changed = false;
-  if (isGhConfigured()) {
-    const ghRecipes = await fetchGithubRecipes();
-    if (ghRecipes.length > 0) { appData.recipes = ghRecipes; changed = true; }
-  }
+
+  // Load recipes from local relative paths
+  const localRecipes = await fetchLocalRecipes();
+  if (localRecipes.length > 0) { appData.recipes = localRecipes; changed = true; }
+
+  // Sync votes/reviews/weekPlan from JSONBin if configured
   if (isCloudConfigured()) {
     const remote = await binRead();
     if (remote) {
@@ -695,14 +700,29 @@ async function syncAll() {
       appData.votesSubmitted = remote.votesSubmitted || appData.votesSubmitted;
       appData.reviews        = remote.reviews        || appData.reviews;
       appData.weekPlan       = remote.weekPlan       || appData.weekPlan;
+      // Check if an admin has triggered a vote notification
+      if (remote.voteOpen && !appData.lastVoteOpenSeen) {
+        appData.lastVoteOpenSeen = remote.voteOpen;
+        showVoteOpenBanner();
+      }
       changed = true;
     }
   }
+
   if (changed) {
     saveLocal();
     renderPlan(); renderRecipes(); renderVote(); renderShop(); renderReview();
   }
-  showSyncStatus(isGhConfigured() || isCloudConfigured() ? 'ok' : 'idle');
+  showSyncStatus(isCloudConfigured() ? 'ok' : 'idle');
+}
+
+function showVoteOpenBanner() {
+  const wrap = document.getElementById('vote-banner-wrap');
+  wrap.innerHTML = `<div class="notif-banner" onclick="showPage('vote', document.querySelectorAll('.nav-btn')[2])">
+    <div class="notif-icon">🗳️</div>
+    <div><div class="notif-title">Time to Vote!</div>
+    <div class="notif-sub">Someone has opened voting — pick your meals for next week!</div></div>
+  </div>`;
 }
 
 // ── Sync status dot ───────────────────────────────────────────────────────────
@@ -789,7 +809,11 @@ function renderPlan() {
       <div><div class="notif-title">It's Friday — Time to Vote!</div>
       <div class="notif-sub">Pick next week's meals for the family</div></div>
     </div>`;
-  } else { voteWrap.innerHTML = ''; }
+  }
+  // Greeting
+  const name = getUserName();
+  const titleEl = document.querySelector('#page-plan .page-title');
+  if (titleEl) titleEl.textContent = name ? `🍽️ Hi ${name.split(' ')[0]}!` : '🍽️ This Week';
 
   // Week grid
   const grid = document.getElementById('week-grid');
@@ -801,7 +825,7 @@ function renderPlan() {
           <span class="day-name">${d.label}</span>
           <span class="badge badge-green">🥦 All Plant Based</span>
         </div>
-        <div class="day-shared-meal">
+        <div class="day-shared-meal" ${plan.shared ? `onclick="openRecipeDetailByName('${plan.shared.replace(/'/g,'\\'')}')" style="cursor:pointer;"` : ''}>
           ${plan.shared ? `<strong>${plan.shared}</strong>` : '<span style="color:#aaa;font-style:italic">No meal set</span>'}
         </div>
       </div>`;
@@ -812,7 +836,7 @@ function renderPlan() {
           <span class="day-name">${d.label}</span>
           <span class="badge badge-amber">🍖 All Meat</span>
         </div>
-        <div class="day-shared-meal">
+        <div class="day-shared-meal" ${plan.shared ? `onclick="openRecipeDetailByName('${plan.shared.replace(/'/g,'\\'')}')" style="cursor:pointer;"` : ''}>
           ${plan.shared ? `<strong>${plan.shared}</strong>` : '<span style="color:#aaa;font-style:italic">No meal set</span>'}
         </div>
       </div>`;
@@ -820,11 +844,11 @@ function renderPlan() {
     return `<div class="day-row">
       <div class="day-header"><span class="day-name">${d.label}</span></div>
       <div class="day-tracks">
-        <div class="day-track track-plant">
+        <div class="day-track track-plant" ${plan.plant ? `onclick="openRecipeDetailByName('${plan.plant ? plan.plant.replace(/'/g,"\\'") : ''}')"  style="cursor:pointer;"` : ''}>
           <div class="track-label">🥦 Plant</div>
           <div class="${plan.plant ? 'track-assigned' : 'track-empty'}">${plan.plant || 'Not set'}</div>
         </div>
-        <div class="day-track track-meat">
+        <div class="day-track track-meat" ${plan.meat ? `onclick="openRecipeDetailByName('${plan.meat ? plan.meat.replace(/'/g,"\\'") : ''}')" style="cursor:pointer;"` : ''}>
           <div class="track-label">🍖 Meat</div>
           <div class="${plan.meat ? 'track-assigned' : 'track-empty'}">${plan.meat || 'Not set'}</div>
         </div>
@@ -1287,6 +1311,11 @@ function openRecipeDetail(id) {
 
 function deleteRecipe() {}
 
+function openRecipeDetailByName(name) {
+  const rec = appData.recipes.find(r => r.name === name);
+  if (rec) openRecipeDetail(rec.id);
+}
+
 // ─── VOTING ───────────────────────────────────────────────────────────────────
 let myVotes = { plant: [], meat: [] };
 const MAX_VOTES = 7;
@@ -1348,19 +1377,55 @@ function updateVoteBadge() {
 function submitVotes() {
   const total = (myVotes.plant || []).length + (myVotes.meat || []).length;
   if (total === 0) { showToast('Cast at least one vote!'); return; }
+  if (!getUserName()) { promptForName(() => doSubmitVotes()); return; }
+  doSubmitVotes();
+}
+function doSubmitVotes() {
+  const total = (myVotes.plant || []).length + (myVotes.meat || []).length;
 
   // Tally votes into appData
   [...(myVotes.plant || []), ...(myVotes.meat || [])].forEach(id => {
     appData.votes[id] = (appData.votes[id] || 0) + 1;
   });
 
-  appData.votesSubmitted.push({ ts: Date.now(), votes: JSON.parse(JSON.stringify(myVotes)) });
+  appData.votesSubmitted.push({ ts: Date.now(), name: getUserName() || 'Family', votes: JSON.parse(JSON.stringify(myVotes)) });
   saveData();
 
   // Show results
   showVoteResults();
   myVotes = { plant: [], meat: [] };
   updateVoteBadge();
+}
+
+function promptForName(callback) {
+  const existing = document.createElement('div');
+  existing.id = 'name-modal-dynamic';
+  existing.className = 'modal-overlay open';
+  existing.innerHTML = `<div class="modal">
+    <div class="modal-handle"></div>
+    <h2 class="modal-title">👋 What's your name?</h2>
+    <p style="font-size:14px;color:var(--mid);margin-bottom:16px;line-height:1.6;">
+      Your name is saved on this device and used to tag your votes and reviews.
+    </p>
+    <div class="form-group">
+      <label class="form-label">Your Name</label>
+      <input class="form-input" id="name-input-dynamic" placeholder="e.g. Mum, Dad, Alex…" value="${getUserName()}">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px;">
+      <button class="btn btn-outline btn-full" onclick="document.getElementById('name-modal-dynamic').remove()">Cancel</button>
+      <button class="btn btn-primary btn-full" onclick="
+        const n = document.getElementById('name-input-dynamic').value.trim();
+        if (!n) { return; }
+        saveUserName(n);
+        document.getElementById('name-input-dynamic').closest('.modal-overlay').remove();
+        showToast('Name saved: ' + n + ' 👋');
+        if (window._nameCallback) { window._nameCallback(); window._nameCallback = null; }
+      ">Save Name</button>
+    </div>
+  </div>`;
+  window._nameCallback = callback;
+  document.body.appendChild(existing);
+  setTimeout(() => document.getElementById('name-input-dynamic')?.focus(), 100);
 }
 
 function showVoteResults() {
@@ -1460,7 +1525,7 @@ function renderReview() {
         ${[1,2,3,4,5].map(n => `<button class="star-btn star-empty" onclick="setReviewStar('${r.id}', ${n})">★</button>`).join('')}
       </div>
       <input class="form-input" id="rev-comment-${r.id}" placeholder="What did you think? (optional)" style="margin-bottom:10px;">
-      <input class="form-input" id="rev-name-${r.id}" placeholder="Your name" style="margin-bottom:10px;">
+      <input class="form-input" id="rev-name-${r.id}" placeholder="Your name" value="${getUserName()}" style="margin-bottom:10px;">
       <button class="btn btn-primary btn-sm btn-full" onclick="submitReview('${r.id}')">Submit Review ⭐</button>`}
     </div>`;
   }).join('');
@@ -1482,7 +1547,7 @@ function submitReview(recId) {
   const rating = (pendingReview && pendingReview[recId]) || 0;
   if (!rating) { showToast('Please give a star rating!'); return; }
   const comment = document.getElementById(`rev-comment-${recId}`)?.value.trim() || '';
-  const reviewer = document.getElementById(`rev-name-${recId}`)?.value.trim() || 'Family';
+  const reviewer = document.getElementById(`rev-name-${recId}`)?.value.trim() || getUserName() || 'Family';
 
   const rec = appData.recipes.find(r => r.id === recId);
   if (!rec) return;
@@ -1552,83 +1617,79 @@ function uploadDadPhoto(input) {
 
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────
 // Long-press on title reveals settings
-let titlePressTimer;
 document.addEventListener('DOMContentLoaded', () => {
-  // Add long press to "this week" title for secret settings
-  const planPage = document.getElementById('page-plan');
-  const title = planPage.querySelector('.page-title');
-  title.addEventListener('touchstart', () => { titlePressTimer = setTimeout(showSecretSettings, 1500); });
-  title.addEventListener('touchend', () => clearTimeout(titlePressTimer));
-
   renderPlan();
   renderRecipes();
   renderVote();
   checkFridayNotification();
   syncAll();
+
+  // Prompt for name on first launch
+  if (!getUserName()) {
+    setTimeout(() => promptForName(null), 1200);
+  }
 });
 
 function showSecretSettings() {
   const modal = document.createElement('div');
   modal.className = 'modal-overlay open';
   modal.id = 'settings-modal-dynamic';
-  const ghCfg    = getGhCfg();
-  const ghOk     = isGhConfigured();
-  const cloudOk  = isCloudConfigured();
-  const hasKey   = !!getApiKey();
+  const cloudOk = isCloudConfigured();
+  const hasKey  = !!getApiKey();
+  const name    = getUserName();
 
   modal.innerHTML = `<div class="modal">
     <div class="modal-handle"></div>
     <h2 class="modal-title">⚙️ Settings</h2>
 
-    <!-- GITHUB RECIPES -->
-    <div style="background:${ghOk ? 'var(--green-pale)' : 'var(--amber-pale)'};border-radius:12px;padding:14px;margin-bottom:14px;">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:${ghOk ? 'var(--green)' : 'var(--amber)'};margin-bottom:6px;">
-        ${ghOk ? '📂 GitHub Recipes — Connected ✅' : '📂 GitHub Recipes — Not Set Up'}
+    <!-- YOUR NAME -->
+    <div style="background:var(--cream);border-radius:14px;padding:14px;margin-bottom:12px;">
+      <div style="font-weight:800;font-size:13px;margin-bottom:8px;">👤 Your Name</div>
+      <div style="font-size:12px;color:var(--mid);margin-bottom:10px;">Used to tag your votes and reviews on all family devices.</div>
+      <input class="form-input" id="settings-name" placeholder="e.g. Mum, Dad, Alex…" value="${name}" style="margin-bottom:8px;">
+      <button class="btn btn-primary btn-sm" style="width:100%;" onclick="
+        const n = document.getElementById('settings-name').value.trim();
+        if(n){saveUserName(n);showToast('Name saved: ' + n + ' 👋');}
+      ">Save Name</button>
+    </div>
+
+    <!-- RECIPES SYNC -->
+    <div style="background:var(--green-pale);border-radius:14px;padding:14px;margin-bottom:12px;">
+      <div style="font-weight:800;font-size:13px;color:var(--green);margin-bottom:6px;">📂 Recipes</div>
+      <div style="font-size:12px;color:var(--mid);margin-bottom:10px;line-height:1.6;">
+        Recipes load from the <code style="background:#fff;padding:1px 5px;border-radius:4px;">plant_based_recipes/</code> and <code style="background:#fff;padding:1px 5px;border-radius:4px;">meat_recipes/</code> folders alongside this app.
       </div>
-      ${ghOk ? `
-      <div style="font-size:12px;color:var(--mid);margin-bottom:10px;line-height:1.5;">
-        Reading from <strong>${ghCfg.owner}/${ghCfg.repo}</strong><br>
-        Add recipe JSON files to <code style="background:#fff;padding:1px 5px;border-radius:4px;">plant_based_recipes/</code> or <code style="background:#fff;padding:1px 5px;border-radius:4px;">meat_recipes/</code> in your repo — the app picks them up automatically.
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary btn-full btn-sm" onclick="syncAll();document.getElementById('settings-modal-dynamic').remove()">🔄 Sync Recipes Now</button>
-        <button class="btn btn-outline btn-sm" onclick="showGhSetup(true)">✏️</button>
-      </div>
-      ` : `
-      <div style="font-size:12px;color:var(--mid);margin-bottom:10px;line-height:1.5;">
-        Connect your GitHub repo so recipes load automatically for everyone. Add or remove recipes by managing files in the repo.
-      </div>
-      <button class="btn btn-primary btn-full btn-sm" onclick="document.getElementById('settings-modal-dynamic').remove();showGhSetup(false)">📂 Connect GitHub Repo →</button>
-      `}
+      <button class="btn btn-primary btn-full btn-sm" onclick="syncAll();document.getElementById('settings-modal-dynamic').remove()">🔄 Reload Recipes</button>
     </div>
 
     <!-- JSONBIN: VOTES + REVIEWS -->
-    <div style="background:${cloudOk ? 'var(--green-pale)' : 'var(--light)'};border-radius:12px;padding:14px;margin-bottom:14px;">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:${cloudOk ? 'var(--green)' : 'var(--mid)'};margin-bottom:6px;">
+    <div style="background:${cloudOk ? 'var(--green-pale)' : 'var(--light)'};border-radius:14px;padding:14px;margin-bottom:12px;">
+      <div style="font-weight:800;font-size:13px;color:${cloudOk ? 'var(--green)' : 'var(--mid)'};margin-bottom:6px;">
         🗳️ Votes & Reviews Sync — ${cloudOk ? 'Active ✅' : 'Not Set Up'}
       </div>
       <div style="font-size:12px;color:var(--mid);margin-bottom:10px;line-height:1.5;">
-        ${cloudOk ? 'Votes and reviews are shared across all family devices via JSONBin.' : 'Set up JSONBin so all votes and reviews are shared across the family.'}
+        ${cloudOk ? 'Votes and reviews are shared across all family devices.' : 'Set up JSONBin so votes and reviews sync across the family.'}
       </div>
-      <button class="btn btn-outline btn-full btn-sm" onclick="document.getElementById('settings-modal-dynamic').remove();showCloudSetup(${cloudOk})">${cloudOk ? '🔧 Change JSONBin Settings' : '☁️ Set Up JSONBin →'}</button>
+      <div style="display:flex;gap:8px;flex-direction:column;">
+        <button class="btn btn-outline btn-full btn-sm" onclick="document.getElementById('settings-modal-dynamic').remove();showCloudSetup(${cloudOk})">${cloudOk ? '🔧 Change JSONBin Settings' : '☁️ Set Up JSONBin →'}</button>
+        ${cloudOk ? `<button class="btn btn-primary btn-full btn-sm" onclick="triggerFamilyVote()">🗳️ Open Voting for Everyone</button>` : ''}
+      </div>
     </div>
 
     <!-- AI SCAN KEY -->
-    <div style="background:var(--light);border-radius:12px;padding:14px;margin-bottom:14px;">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:var(--mid);margin-bottom:6px;">
-        🔑 AI Ingredient Scan ${hasKey ? '<span style="color:var(--green);">✅</span>' : ''}
-      </div>
+    <div style="background:var(--light);border-radius:14px;padding:14px;margin-bottom:12px;">
+      <div style="font-weight:800;font-size:13px;color:var(--mid);margin-bottom:6px;">🔑 AI Ingredient Scan ${hasKey ? '<span style="color:var(--green);">✅</span>' : ''}</div>
       <input class="form-input" id="settings-api-key" type="password" placeholder="sk-ant-api03-..." value="${getApiKey()}" autocomplete="off" style="margin-bottom:8px;">
       <button class="btn btn-primary btn-sm" style="width:100%;" onclick="saveApiKey(document.getElementById('settings-api-key').value);showToast('API key saved ✅');">Save Key</button>
     </div>
 
     <!-- DAD JOKE PHOTO -->
-    <div style="background:var(--light);border-radius:12px;padding:14px;margin-bottom:14px;">
-      <div style="font-family:Syne,sans-serif;font-weight:700;font-size:13px;color:var(--mid);margin-bottom:8px;">📸 Dad's Review Photo</div>
+    <div style="background:var(--light);border-radius:14px;padding:14px;margin-bottom:12px;">
+      <div style="font-weight:800;font-size:13px;color:var(--mid);margin-bottom:8px;">📸 Dad's Review Photo</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-outline btn-sm" onclick="document.getElementById('dad-photo-upload-settings').click()">📷 Upload Photo</button>
         <input type="file" id="dad-photo-upload-settings" accept="image/*" style="display:none" onchange="uploadDadPhoto(this)">
-        <button class="btn btn-outline btn-sm" onclick="showDadJoke()">🎉 Test Dad Joke</button>
+        <button class="btn btn-outline btn-sm" onclick="showDadJoke()">🎉 Test</button>
         <button class="btn btn-outline btn-sm" onclick="appData.votes={};appData.votesSubmitted=[];saveData();showToast('Votes reset!');">🔄 Reset Votes</button>
       </div>
     </div>
@@ -1638,67 +1699,37 @@ function showSecretSettings() {
   document.body.appendChild(modal);
 }
 
-
-function showGhSetup(isEdit) {
-  document.getElementById('gh-setup-modal')?.remove();
-  const cfg = getGhCfg();
-  const modal = document.createElement('div');
-  modal.id = 'gh-setup-modal';
-  modal.className = 'modal-overlay open';
-  modal.innerHTML = `<div class="modal">
-    <div class="modal-handle"></div>
-    <h2 class="modal-title">📂 Connect GitHub Repo</h2>
-    <div style="background:var(--green-pale);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.9;">
-      <strong>One-time setup:</strong><br>
-      1. Make sure your GitHub repo is <strong>public</strong><br>
-      2. Create two folders in the repo:<br>
-         &nbsp;&nbsp;• <code style="background:#fff;padding:1px 5px;border-radius:4px;">plant_based_recipes/</code><br>
-         &nbsp;&nbsp;• <code style="background:#fff;padding:1px 5px;border-radius:4px;">meat_recipes/</code><br>
-      3. Use the <strong>Recipe Converter tool</strong> to generate JSON files<br>
-      4. Commit the JSON files to the right folder<br>
-      5. Enter your GitHub username and repo name below
-    </div>
-    <div class="form-group">
-      <label class="form-label">GitHub Username</label>
-      <input class="form-input" id="gh-owner" placeholder="e.g. johnsmith" value="${cfg.owner || ''}">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Repository Name</label>
-      <input class="form-input" id="gh-repo" placeholder="e.g. family-recipes" value="${cfg.repo || ''}">
-    </div>
-    <div id="gh-test-result" style="min-height:20px;margin-bottom:10px;font-size:13px;"></div>
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      <button class="btn btn-primary btn-full" onclick="testAndSaveGh()">✅ Connect & Load Recipes</button>
-      ${isEdit ? '<button class="btn btn-outline btn-full btn-sm" onclick="saveGhCfg({});showToast(\'GitHub disconnected\');document.getElementById(\'gh-setup-modal\').remove();">Disconnect</button>' : ''}
-      <button class="btn btn-outline btn-full" onclick="document.getElementById('gh-setup-modal').remove()">Cancel</button>
-    </div>
-  </div>`;
-  document.body.appendChild(modal);
-}
-
-async function testAndSaveGh() {
-  const owner = document.getElementById('gh-owner')?.value.trim();
-  const repo  = document.getElementById('gh-repo')?.value.trim();
-  const result = document.getElementById('gh-test-result');
-  if (!owner || !repo) { result.innerHTML = '<span style="color:var(--red);">Please fill in both fields</span>'; return; }
-  result.innerHTML = '<span style="color:var(--amber);">🔄 Connecting…</span>';
-  saveGhCfg({ owner, repo });
-
-  const recipes = await fetchGithubRecipes();
-  if (recipes.length === 0) {
-    result.innerHTML = `<span style="color:var(--amber);">⚠️ Connected but no recipes found yet. Make sure your repo is public and has JSON files in <code>plant_based_recipes/</code> or <code>meat_recipes/</code>.</span>`;
-  } else {
-    appData.recipes = recipes;
-    saveLocal();
-    renderRecipes(); renderVote();
-    result.innerHTML = `<span style="color:var(--green);">✅ Loaded ${recipes.length} recipe${recipes.length!==1?'s':''}!</span>`;
+async function triggerFamilyVote() {
+  // Write a voteOpen timestamp to JSONBin — all devices will see it on next sync
+  const { binId, apiKey } = getCloudCfg();
+  if (!binId || !apiKey) return;
+  const ts = new Date().toISOString();
+  const payload = {
+    votes: appData.votes,
+    votesSubmitted: appData.votesSubmitted,
+    reviews: appData.reviews,
+    weekPlan: appData.weekPlan,
+    voteOpen: ts
+  };
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      document.getElementById('settings-modal-dynamic')?.remove();
+      showToast('✅ Voting opened for everyone!');
+      // Also show banner locally
+      showVoteOpenBanner();
+    }
+  } catch(e) {
+    showToast('⚠️ Could not open voting — check connection');
   }
-  setTimeout(() => {
-    document.getElementById('gh-setup-modal')?.remove();
-    document.getElementById('settings-modal-dynamic')?.remove();
-    if (recipes.length > 0) showToast(`📂 ${recipes.length} recipes loaded from GitHub!`);
-  }, 1800);
 }
+
+
+// GitHub setup removed — app now uses relative paths
 
 function showCloudSetup(isEdit) {
   document.getElementById('cloud-setup-modal')?.remove();
