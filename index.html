@@ -453,8 +453,12 @@
 <div id="page-shop" class="page">
   <div class="page-header">
     <h1 class="page-title">🛒 Shopping</h1>
-    <button class="btn btn-outline btn-sm" onclick="clearChecked()">Clear done</button>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button class="btn btn-outline btn-sm" id="shop-group-btn" onclick="toggleShopGrouping()" title="Group by category">⊞ Group</button>
+      <button class="btn btn-outline btn-sm" onclick="clearChecked()">Clear done</button>
+    </div>
   </div>
+  <div id="shop-status" style="margin-bottom:10px;display:none;"></div>
   <div id="shop-list-wrap"></div>
 </div>
 
@@ -603,7 +607,7 @@ function loadData() {
     const raw = localStorage.getItem(DB_KEY);
     if (raw) return JSON.parse(raw);
   } catch(e) {}
-  return { recipes:[], weekPlan:{}, votes:{}, votesSubmitted:[], shoppingList:[], reviews:[], dadJokePhoto:null };
+  return { recipes:[], weekPlan:{}, votes:{}, votesSubmitted:[], shoppingList:[], reviews:[], dadJokePhoto:null, shoppingGrouped:null };
 }
 function saveLocal() {
   localStorage.setItem(DB_KEY, JSON.stringify(appData));
@@ -940,6 +944,9 @@ function saveWeekPlan() {
 }
 
 // ─── SHOPPING LIST ────────────────────────────────────────────────────────────
+// ── SHOPPING LIST ─────────────────────────────────────────────────────────────
+let shopGrouped = false; // false = by recipe, true = by category
+
 function generateShoppingList() {
   const mealNames = new Set();
   DAYS.forEach(d => {
@@ -958,16 +965,127 @@ function generateShoppingList() {
         : rec.ingredients.split('\n');
       ingList.forEach(ing => {
         const trimmed = ing.trim();
-        if (trimmed) items.push({ text: trimmed, recipe: name, checked: false, id: Date.now() + Math.random() });
+        if (trimmed) items.push({
+          text: trimmed, recipe: name,
+          checked: false, id: Date.now() + Math.random(),
+          category: null, consolidated: null
+        });
       });
     }
   });
 
-  // Preserve checked state
+  // Preserve checked state from previous list
   const prevChecked = new Set((appData.shoppingList || []).filter(i => i.checked).map(i => i.text));
   items.forEach(i => { if (prevChecked.has(i.text)) i.checked = true; });
 
   appData.shoppingList = items;
+  // Clear any previously grouped data when week changes
+  appData.shoppingGrouped = null;
+}
+
+function toggleShopGrouping() {
+  shopGrouped = !shopGrouped;
+  const btn = document.getElementById('shop-group-btn');
+  if (btn) btn.style.background = shopGrouped ? 'var(--aqua)' : '';
+  if (btn) btn.style.color = shopGrouped ? 'var(--navy)' : '';
+
+  if (shopGrouped && !appData.shoppingGrouped) {
+    buildGroupedList();
+  } else {
+    renderShop();
+  }
+}
+
+async function buildGroupedList() {
+  const apiKey = getApiKey();
+  const statusEl = document.getElementById('shop-status');
+  const wrap = document.getElementById('shop-list-wrap');
+
+  if (!apiKey) {
+    showToast('⚠️ Set your API key in ⚙️ Settings to group ingredients');
+    shopGrouped = false;
+    const btn = document.getElementById('shop-group-btn');
+    if (btn) { btn.style.background = ''; btn.style.color = ''; }
+    return;
+  }
+
+  // Show loading state
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--aqua-pale);border-radius:10px;font-size:13px;color:#007A7A;font-weight:600;">
+    <div class="spinner" style="border-top-color:#007A7A;border-color:rgba(0,200,200,0.2);"></div>
+    Grouping and combining ingredients…
+  </div>`;
+  wrap.innerHTML = '';
+
+  const allIngredients = (appData.shoppingList || []).map(i => `[${i.recipe}] ${i.text}`).join('\n');
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        messages: [{
+          role: 'user',
+          content: `You are a smart shopping list organiser. I have the following ingredients needed across multiple recipes this week (format is [Recipe Name] ingredient):
+
+${allIngredients}
+
+Please:
+1. Combine duplicate or similar ingredients across recipes (e.g. "2 carrots [recipe A]" + "3 carrots [recipe B]" = "5 carrots")
+2. Group everything into these supermarket categories: Fruit & Veg, Meat & Fish, Dairy & Eggs, Tins & Pulses, Pasta Rice & Grains, Oils Sauces & Condiments, Herbs & Spices, Bakery, Frozen, Other
+3. Only include categories that have items
+
+Return ONLY valid JSON, no markdown:
+{
+  "categories": [
+    {
+      "name": "Fruit & Veg",
+      "emoji": "🥦",
+      "items": [
+        { "text": "5 carrots", "recipes": ["Recipe A", "Recipe B"] },
+        { "text": "1 onion", "recipes": ["Recipe A"] }
+      ]
+    }
+  ]
+}
+
+Rules:
+- Consolidate sensibly: combine same ingredient across recipes, sum quantities where possible
+- Keep preparation notes if relevant (e.g. "finely chopped")
+- Use metric units consistently
+- recipes array = which recipes need this item`
+        }]
+      })
+    });
+
+    if (!res.ok) throw new Error('API error ' + res.status);
+    const data = await res.json();
+    const raw = (data.content || []).map(c => c.text || '').join('').trim();
+    const clean = raw.replace(/^```json\s*/,'').replace(/```\s*$/,'').trim();
+    const parsed = JSON.parse(clean);
+
+    appData.shoppingGrouped = parsed;
+    saveLocal();
+    statusEl.style.display = 'none';
+    renderShop();
+
+  } catch(e) {
+    console.error('Grouping failed:', e);
+    statusEl.innerHTML = `<div style="padding:10px 14px;background:#fff0f0;border-radius:10px;font-size:13px;color:var(--red);">
+      ⚠️ Grouping failed — showing by recipe instead
+    </div>`;
+    shopGrouped = false;
+    const btn = document.getElementById('shop-group-btn');
+    if (btn) { btn.style.background = ''; btn.style.color = ''; }
+    renderShop();
+  }
 }
 
 function renderShop() {
@@ -979,7 +1097,16 @@ function renderShop() {
     return;
   }
 
-  // Group by recipe
+  if (shopGrouped && appData.shoppingGrouped) {
+    renderShopGrouped();
+  } else {
+    renderShopByRecipe();
+  }
+}
+
+function renderShopByRecipe() {
+  const wrap = document.getElementById('shop-list-wrap');
+  const list = appData.shoppingList || [];
   const byRecipe = {};
   list.forEach(item => {
     if (!byRecipe[item.recipe]) byRecipe[item.recipe] = [];
@@ -989,12 +1116,45 @@ function renderShop() {
   wrap.innerHTML = `<div class="card card-body">` +
     Object.entries(byRecipe).map(([recipe, items]) => `
       <div class="shop-cat">${recipe}</div>
-      ${items.map(item => `
-        <div class="shop-item ${item.checked ? 'done' : ''}" id="shop-${item.id}">
-          <div class="shop-check ${item.checked ? 'checked' : ''}" onclick="toggleShopItem('${item.id}')"></div>
-          <span class="shop-text">${item.text}</span>
-        </div>`).join('')}
+      ${items.map(item => shopItemHtml(item)).join('')}
     `).join('') + `</div>`;
+}
+
+function renderShopGrouped() {
+  const wrap = document.getElementById('shop-list-wrap');
+  const grouped = appData.shoppingGrouped;
+  if (!grouped || !grouped.categories) { renderShopByRecipe(); return; }
+
+  // Build a lookup of checked state from flat list
+  const checkedSet = new Set((appData.shoppingList || []).filter(i => i.checked).map(i => i.text.toLowerCase()));
+
+  wrap.innerHTML = grouped.categories.map(cat => {
+    const items = cat.items || [];
+    return `<div class="card card-body" style="margin-bottom:10px;">
+      <div style="font-family:'Manrope',sans-serif;font-weight:800;font-size:13px;color:var(--navy);margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+        <span>${cat.emoji || '📦'}</span><span>${cat.name}</span>
+        <span style="margin-left:auto;font-size:11px;font-weight:600;color:var(--mid);">${items.length} item${items.length!==1?'s':''}</span>
+      </div>
+      ${items.map(item => {
+        const isChecked = checkedSet.has(item.text.toLowerCase());
+        const id = 'grp-' + btoa(encodeURIComponent(item.text)).slice(0,12);
+        const recipeTags = (item.recipes || []).length > 1
+          ? `<span style="font-size:10px;color:var(--mid);margin-left:6px;">(${item.recipes.join(', ')})</span>`
+          : '';
+        return `<div class="shop-item ${isChecked ? 'done' : ''}" id="${id}">
+          <div class="shop-check ${isChecked ? 'checked' : ''}" onclick="toggleGroupedItem('${id}', this)"></div>
+          <span class="shop-text">${item.text}${recipeTags}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+function shopItemHtml(item) {
+  return `<div class="shop-item ${item.checked ? 'done' : ''}" id="shop-${item.id}">
+    <div class="shop-check ${item.checked ? 'checked' : ''}" onclick="toggleShopItem('${item.id}')"></div>
+    <span class="shop-text">${item.text}</span>
+  </div>`;
 }
 
 function toggleShopItem(id) {
@@ -1002,8 +1162,27 @@ function toggleShopItem(id) {
   if (item) { item.checked = !item.checked; saveData(false); renderShop(); }
 }
 
+function toggleGroupedItem(elId, checkEl) {
+  const done = !checkEl.classList.contains('checked');
+  const row = document.getElementById(elId);
+  if (done) {
+    checkEl.classList.add('checked');
+    row.classList.add('done');
+  } else {
+    checkEl.classList.remove('checked');
+    row.classList.remove('done');
+  }
+  // Persist checked state back to flat list by matching text
+  const text = row.querySelector('.shop-text').textContent.split('(')[0].trim().toLowerCase();
+  (appData.shoppingList || []).forEach(i => {
+    if (i.text.toLowerCase() === text) i.checked = done;
+  });
+  saveData(false);
+}
+
 function clearChecked() {
   appData.shoppingList = (appData.shoppingList || []).filter(i => !i.checked);
+  appData.shoppingGrouped = null; // force re-group on next toggle
   saveData(false); renderShop(); showToast('Cleared checked items ✅');
 }
 
